@@ -45,13 +45,31 @@ func monitorURL(port: Int) throws -> URL {
 }
 enum MonitorError: Error { case configuration, response, incompatible }
 
+enum MenuBarAlertKind: Equatable {
+    case healthy, low, depleted, unavailable
+}
+
 struct MenuBarReading: Equatable {
     let title: String
     let remaining: Double?
+    let secondaryTitle: String?
+    let tag: String?
+    let alert: MenuBarAlertKind
     let detail: String
     var accessibilityLabel: String { "CDXScope — \(detail)" }
 
-    init(status: Status?, window: Allowance?, unavailable: Bool, now: Date) {
+    private static func formatPercent(_ value: Double) -> String {
+        value > 0 && value < 1 ? "<1%" : "\(Int(value.rounded()))%"
+    }
+
+    private static func durationTag(for window: Allowance) -> String? {
+        guard let minutes = window.duration, minutes > 0 else { return nil }
+        if minutes >= 1440 { return "\(Int((minutes / 1440).rounded()))D" }
+        if minutes >= 60 { return "\(Int((minutes / 60).rounded()))H" }
+        return "\(Int(minutes.rounded()))M"
+    }
+
+    init(status: Status?, window: Allowance?, secondary: Allowance? = nil, unavailable: Bool, now: Date) {
         var reason: String?
         if unavailable { reason = "Monitor unavailable" }
         else if status == nil { reason = "Connecting to monitor" }
@@ -69,63 +87,183 @@ struct MenuBarReading: Equatable {
         if let reason {
             title = "—"
             remaining = nil
+            secondaryTitle = nil
+            tag = nil
+            alert = .unavailable
             detail = reason
         } else if let window {
             // Match the panel's rounding; preserve a small nonzero allowance without displaying 0%.
             let value = window.remaining
             remaining = value
-            title = value > 0 && value < 1 ? "<1%" : "\(Int(value.rounded()))%"
-            detail = "\(window.title): \(title) remaining"
+            title = Self.formatPercent(value)
+            let validSecondary: Allowance? = {
+                guard let secondary, secondary.id != window.id, secondary.used.isFinite else { return nil }
+                let age = now.timeIntervalSince1970 - secondary.at / 1000
+                guard age.isFinite, age >= -60, age < 180 else { return nil }
+                if let reset = secondary.reset, !reset.isFinite || reset <= now.timeIntervalSince1970 { return nil }
+                return secondary
+            }()
+            if let validSecondary {
+                let secPct = Self.formatPercent(validSecondary.remaining)
+                secondaryTitle = secPct
+                tag = (validSecondary.duration ?? 0) >= 1440 ? "WK" : (Self.durationTag(for: validSecondary) ?? "WK")
+                detail = "\(window.title): \(title) remaining · \(validSecondary.title): \(secPct) remaining"
+            } else {
+                secondaryTitle = nil
+                tag = Self.durationTag(for: window)
+                detail = "\(window.title): \(title) remaining"
+            }
+            if value <= 0 { alert = .depleted }
+            else if value < 15 { alert = .low }
+            else { alert = .healthy }
         } else {
             title = "—"
             remaining = nil
+            secondaryTitle = nil
+            tag = nil
+            alert = .unavailable
             detail = "No allowance available"
         }
     }
 }
 
-enum MenuBarGauge {
-    static let size = NSSize(width: 26, height: 22)
-    static func pointer(remaining: Double?) -> (start: NSPoint, end: NSPoint)? {
-        guard let remaining, remaining.isFinite else { return nil }
-        let angle = Double.pi * (1 - min(100, max(0, remaining)) / 100)
-        let x = 13 + 10 * cos(angle), y = 12 + 4.5 * sin(angle)
-        // Follow the ellipse's outward normal so the pointer never enters the numerals.
-        let nx = cos(angle) / 10, ny = sin(angle) / 4.5
-        let length = hypot(nx, ny)
-        return (NSPoint(x: x + 0.6 * nx / length, y: y + 0.6 * ny / length),
-                NSPoint(x: x + 2.2 * nx / length, y: y + 2.2 * ny / length))
+/// 6-petal geometric blossom rendered in CoreGraphics with true center alpha cutout and zero petal-overlap blotches.
+enum BlossomShape {
+    static func petalPath() -> CGPath {
+        let p = CGMutablePath()
+        // Defined in 24x24 top-down coordinates, then flipped to AppKit bottom-up by draw().
+        p.move(to: CGPoint(x: 12.0, y: 3.1))
+        p.addCurve(to: CGPoint(x: 16.0, y: 7.0), control1: CGPoint(x: 14.3, y: 3.1), control2: CGPoint(x: 16.0, y: 4.8))
+        p.addLine(to: CGPoint(x: 16.0, y: 10.6))
+        p.addCurve(to: CGPoint(x: 14.5, y: 12.0), control1: CGPoint(x: 16.0, y: 11.4), control2: CGPoint(x: 15.3, y: 12.0))
+        p.addLine(to: CGPoint(x: 11.1, y: 12.0))
+        p.addCurve(to: CGPoint(x: 9.9, y: 10.7), control1: CGPoint(x: 10.4, y: 12.0), control2: CGPoint(x: 9.9, y: 11.4))
+        p.addLine(to: CGPoint(x: 9.9, y: 5.5))
+        p.addCurve(to: CGPoint(x: 12.0, y: 3.1), control1: CGPoint(x: 9.9, y: 4.1), control2: CGPoint(x: 10.8, y: 3.1))
+        p.closeSubpath()
+        return p
     }
-    static func image(reading: MenuBarReading) -> NSImage {
-        // Give the arc a little overhang and separation above the percentage.
-        let digits = reading.title.replacingOccurrences(of: "%", with: "")
-        let text = NSMutableAttributedString(string: reading.title, attributes: [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: digits.count >= 3 ? 8 : 9.5, weight: .medium),
-            .foregroundColor: NSColor.black,
-        ])
-        if reading.title.hasSuffix("%") {
-            text.addAttribute(.font, value: NSFont.systemFont(ofSize: 6.5, weight: .medium), range: NSRange(location: (reading.title as NSString).length - 1, length: 1))
+
+    static func draw(in cg: CGContext, rect: CGRect, color: NSColor, alpha: CGFloat) {
+        let petal = petalPath()
+        cg.saveGState()
+        cg.setAlpha(alpha)
+        cg.beginTransparencyLayer(auxiliaryInfo: nil)
+        // Map 24x24 top-down space into AppKit's bottom-up rect.
+        cg.translateBy(x: rect.minX, y: rect.maxY)
+        cg.scaleBy(x: rect.width / 24.0, y: -rect.height / 24.0)
+        cg.setFillColor(color.cgColor)
+        for i in 0..<6 {
+            cg.saveGState()
+            cg.translateBy(x: 12.0, y: 12.0)
+            cg.rotate(by: CGFloat(i) * (.pi / 3.0))
+            cg.translateBy(x: -12.0, y: -12.0)
+            cg.addPath(petal)
+            cg.fillPath()
+            cg.restoreGState()
         }
-        let pointer = pointer(remaining: reading.remaining)
-        // Render at native resolution; macOS supplies contrast and selection colors.
+        // Punch a true alpha-transparent core in the blossom center.
+        cg.setBlendMode(.clear)
+        cg.addEllipse(in: CGRect(x: 12.0 - 2.8, y: 12.0 - 2.8, width: 5.6, height: 5.6))
+        cg.fillPath()
+        cg.endTransparencyLayer()
+        cg.restoreGState()
+    }
+}
+
+/// Living Blossom menu bar meter: 6-petal blossom filled bottom-to-top by remaining % + bold % + compact window tag.
+enum MenuBarGauge {
+    static let height: CGFloat = 22
+
+    static func width(reading: MenuBarReading) -> CGFloat {
+        if reading.secondaryTitle != nil { return 72 }
+        if reading.tag != nil { return 63 }
+        return 42
+    }
+
+    static func image(reading: MenuBarReading, darkBar: Bool = true) -> NSImage {
+        let size = NSSize(width: width(reading: reading), height: height)
+        let useTemplate = reading.alert == .healthy || reading.alert == .unavailable
+
+        let primaryColor: NSColor
+        let secondaryColor: NSColor
+        switch reading.alert {
+        case .healthy, .unavailable:
+            primaryColor = NSColor.black
+            secondaryColor = NSColor.black
+        case .low:
+            primaryColor = darkBar
+                ? NSColor(red: 0.98, green: 0.75, blue: 0.14, alpha: 1) // #fbbf24
+                : NSColor(red: 0.85, green: 0.47, blue: 0.02, alpha: 1) // #d97706
+            secondaryColor = darkBar ? NSColor.white : NSColor.black
+        case .depleted:
+            primaryColor = darkBar
+                ? NSColor(red: 0.97, green: 0.44, blue: 0.44, alpha: 1) // #f87171
+                : NSColor(red: 0.86, green: 0.15, blue: 0.15, alpha: 1) // #dc2626
+            secondaryColor = primaryColor
+        }
+
         let image = NSImage(size: size, flipped: false) { _ in
-            let arc = NSBezierPath()
-            arc.move(to: NSPoint(x: 3, y: 12))
-            arc.curve(to: NSPoint(x: 13, y: 16.5), controlPoint1: NSPoint(x: 3, y: 14.4853), controlPoint2: NSPoint(x: 7.4772, y: 16.5))
-            arc.curve(to: NSPoint(x: 23, y: 12), controlPoint1: NSPoint(x: 18.5228, y: 16.5), controlPoint2: NSPoint(x: 23, y: 14.4853))
-            arc.lineWidth = 0.95; arc.lineCapStyle = .round
-            NSColor.black.withAlphaComponent(pointer == nil ? 0.28 : 0.75).setStroke()
-            arc.stroke()
-            if let pointer {
-                let needle = NSBezierPath()
-                needle.move(to: pointer.start); needle.line(to: pointer.end)
-                needle.lineWidth = 1.3; needle.lineCapStyle = .round
-                NSColor.black.setStroke(); needle.stroke()
+            guard let cg = NSGraphicsContext.current?.cgContext else { return false }
+
+            // 1. Living Blossom silhouette (24% ghost top + solid liquid fill bottom-to-top)
+            let logoRect = CGRect(x: 1.0, y: 2.25, width: 17.5, height: 17.5)
+            BlossomShape.draw(in: cg, rect: logoRect, color: primaryColor, alpha: 0.24)
+
+            if let rem = reading.remaining, rem.isFinite, rem > 0 {
+                let frac = CGFloat(min(100, max(0, rem)) / 100.0)
+                // Blossom artwork vertically spans y=[3.1..20.9] in the 24x24 box.
+                let baseY = logoRect.minY + (3.1 / 24.0) * logoRect.height
+                let spanH = (17.8 / 24.0) * logoRect.height
+                let fillH = spanH * frac
+                cg.saveGState()
+                cg.clip(to: CGRect(x: logoRect.minX - 1, y: baseY - 1, width: logoRect.width + 2, height: fillH + 1))
+                BlossomShape.draw(in: cg, rect: logoRect, color: primaryColor, alpha: 1.0)
+                cg.restoreGState()
             }
-            text.draw(at: NSPoint(x: (size.width - text.size().width) / 2, y: 0))
+
+            // 2. Bold hero remaining percentage (harmonized with AGYScope)
+            let digits = reading.title.replacingOccurrences(of: "%", with: "")
+            let fontSize: CGFloat = digits.count >= 3 ? 10.2 : 12.2
+            let text = NSMutableAttributedString(string: reading.title, attributes: [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .bold),
+                .foregroundColor: primaryColor,
+            ])
+            if reading.title.hasSuffix("%") {
+                text.addAttribute(.font, value: NSFont.systemFont(ofSize: 7.4, weight: .semibold), range: NSRange(location: (reading.title as NSString).length - 1, length: 1))
+            }
+            let textOriginX: CGFloat = 20.5
+            text.draw(at: NSPoint(x: textOriginX, y: digits.count >= 3 ? 4.4 : 3.4))
+
+            // 3. Right-hand window context: stacked WK/% when dual-window, or compact duration tag (e.g. 7D)
+            if let secondaryTitle = reading.secondaryTitle {
+                let tagAttr = NSAttributedString(string: reading.tag ?? "WK", attributes: [
+                    .font: NSFont.systemFont(ofSize: 5.8, weight: .semibold),
+                    .foregroundColor: secondaryColor.withAlphaComponent(0.48),
+                ])
+                let secDigits = secondaryTitle.replacingOccurrences(of: "%", with: "")
+                let secAttr = NSMutableAttributedString(string: secondaryTitle, attributes: [
+                    .font: NSFont.monospacedDigitSystemFont(ofSize: secDigits.count >= 3 ? 7.2 : 8.2, weight: .medium),
+                    .foregroundColor: secondaryColor.withAlphaComponent(0.72),
+                ])
+                if secondaryTitle.hasSuffix("%") {
+                    secAttr.addAttribute(.font, value: NSFont.systemFont(ofSize: 5.5, weight: .medium), range: NSRange(location: (secondaryTitle as NSString).length - 1, length: 1))
+                }
+                let centerX: CGFloat = 59.5
+                tagAttr.draw(at: NSPoint(x: centerX - tagAttr.size().width / 2, y: 12.2))
+                secAttr.draw(at: NSPoint(x: centerX - secAttr.size().width / 2, y: 2.2))
+            } else if let tag = reading.tag {
+                let tagAttr = NSAttributedString(string: tag, attributes: [
+                    .font: NSFont.systemFont(ofSize: 6.5, weight: .bold),
+                    .foregroundColor: secondaryColor.withAlphaComponent(0.48),
+                ])
+                let tagX = max(textOriginX + text.size().width + 3.0, 48.0)
+                let tagY = (size.height - tagAttr.size().height) / 2.0 - 0.3
+                tagAttr.draw(at: NSPoint(x: min(tagX, size.width - tagAttr.size().width - 1.5), y: tagY))
+            }
             return true
         }
-        image.isTemplate = true
+        image.isTemplate = useTemplate
         return image
     }
 }
@@ -200,11 +338,15 @@ final class PanelModel: ObservableObject {
     private var historyGeneration = 0
     private var historyReadAt: Date?
     var window: Allowance? { status?.windows.first(where: { $0.id == selectedWindow }) ?? status?.windows.first }
+    var companionWindow: Allowance? {
+        guard let active = window else { return nil }
+        return status?.windows.first(where: { $0.bucket == active.bucket && $0.id != active.id })
+    }
     private let client: MonitorClient
     var dashboardURL: URL { client.base }
     init(client: MonitorClient) { self.client = client }
     func menuBarReading(at now: Date = Date()) -> MenuBarReading {
-        MenuBarReading(status: status, window: window, unavailable: unavailable, now: now)
+        MenuBarReading(status: status, window: window, secondary: companionWindow, unavailable: unavailable, now: now)
     }
     func poll(historyVisible: Bool) async {
         await update()

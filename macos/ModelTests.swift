@@ -65,31 +65,30 @@ func payload(version: Int = 1, used: Double = 27, ok: Bool = true, enabled: Bool
         precondition(label(failedStatus).title == "—" && label(pausedStatus).detail == "Monitoring paused")
         let emptyStatus = Status(version: 1, csrf: "token", windows: [], collector: freshStatus.collector, attempts: freshStatus.attempts)
         precondition(label(emptyStatus).title == "—")
-        for remaining in [0.0, 0.4, 9, 49, 50, 51, 100] {
+        for remaining in [0.0, 0.4, 9, 15, 49, 50, 51, 100] {
             let window = Allowance(account: nil, bucket: "codex", slot: "primary", used: 100 - remaining, duration: 10080, reset: nil, at: clock.timeIntervalSince1970 * 1000)
             let reading = label(window: window)
             precondition(abs(reading.remaining! - remaining) < 0.000001)
-            let image = MenuBarGauge.image(reading: reading)
-            precondition(image.isTemplate && image.size == NSSize(width: 26, height: 22))
+            precondition(reading.tag == "7D" && reading.secondaryTitle == nil)
+            let expectedAlert: MenuBarAlertKind = remaining <= 0 ? .depleted : (remaining < 15 ? .low : .healthy)
+            precondition(reading.alert == expectedAlert)
+            let image = MenuBarGauge.image(reading: reading, darkBar: true)
+            precondition(image.isTemplate == (expectedAlert == .healthy))
+            precondition(image.size == NSSize(width: 63, height: 22))
         }
-        let left = MenuBarGauge.pointer(remaining: 0)!, middle = MenuBarGauge.pointer(remaining: 50)!, right = MenuBarGauge.pointer(remaining: 100)!
-        precondition(abs(left.end.x - 0.8) < 0.001 && abs(left.end.y - 12) < 0.001)
-        precondition(abs(middle.end.x - 13) < 0.001 && abs(middle.end.y - 18.7) < 0.001)
-        precondition(abs(right.end.x - 25.2) < 0.001 && abs(right.end.y - 12) < 0.001)
-        var previousX = -Double.infinity
-        for percent in 0...100 {
-            let needle = MenuBarGauge.pointer(remaining: Double(percent))!
-            precondition(needle.end.x >= previousX)
-            previousX = needle.end.x
-            for p in [needle.start, needle.end] {
-                precondition(p.x >= 0.65 && p.x <= 25.35 && p.y >= 0.65 && p.y <= 21.35)
-            }
-        }
+        // Dual-window Codex tiers render stacked WK + secondary % at 72pt width.
+        let fiveHour = Allowance(account: nil, bucket: "codex", slot: "primary", used: 22, duration: 300, reset: nil, at: clock.timeIntervalSince1970 * 1000)
+        let sevenDay = Allowance(account: nil, bucket: "codex", slot: "secondary", used: 38, duration: 10080, reset: nil, at: clock.timeIntervalSince1970 * 1000)
+        let dualStatus = Status(version: 1, csrf: "token", windows: [fiveHour, sevenDay], collector: freshStatus.collector, attempts: freshStatus.attempts)
+        let dualReading = MenuBarReading(status: dualStatus, window: fiveHour, secondary: sevenDay, unavailable: false, now: clock)
+        precondition(dualReading.title == "78%" && dualReading.secondaryTitle == "62%" && dualReading.tag == "WK" && dualReading.alert == .healthy)
+        let dualImage = MenuBarGauge.image(reading: dualReading, darkBar: false)
+        precondition(dualImage.isTemplate && dualImage.size == NSSize(width: 72, height: 22))
         for reading in [label(nil), label(unavailable: true), label(pausedStatus), label(failedStatus), label(window: expired)] {
-            precondition(reading.remaining == nil && MenuBarGauge.pointer(remaining: reading.remaining) == nil)
-            precondition(MenuBarGauge.image(reading: reading).isTemplate)
+            precondition(reading.remaining == nil && reading.alert == .unavailable && reading.tag == nil)
+            let image = MenuBarGauge.image(reading: reading)
+            precondition(image.isTemplate && image.size == NSSize(width: 42, height: 22))
         }
-        precondition(MenuBarGauge.pointer(remaining: .nan) == nil)
         var paths: [String] = []
         FixtureProtocol.handler = { request in
             paths.append(request.url!.path)

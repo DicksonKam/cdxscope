@@ -3,15 +3,39 @@ import SwiftUI
 import Darwin
 import Combine
 
-struct Gauge: Shape {
+struct BlossomPetal: Shape {
     func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let c = CGPoint(x: rect.midX, y: rect.midY)
-        let r = min(rect.width, rect.height) * 0.38
-        path.addArc(center: c, radius: r, startAngle: .degrees(135), endAngle: .degrees(405), clockwise: false)
-        path.move(to: c)
-        path.addLine(to: CGPoint(x: c.x + r * 0.52, y: c.y - r * 0.52))
-        return path
+        let sx = rect.width / 24.0
+        let sy = rect.height / 24.0
+        func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: rect.minX + x * sx, y: rect.minY + y * sy) }
+        var p = Path()
+        p.move(to: pt(12.0, 3.1))
+        p.addCurve(to: pt(16.0, 7.0), control1: pt(14.3, 3.1), control2: pt(16.0, 4.8))
+        p.addLine(to: pt(16.0, 10.6))
+        p.addCurve(to: pt(14.5, 12.0), control1: pt(16.0, 11.4), control2: pt(15.3, 12.0))
+        p.addLine(to: pt(11.1, 12.0))
+        p.addCurve(to: pt(9.9, 10.7), control1: pt(10.4, 12.0), control2: pt(9.9, 11.4))
+        p.addLine(to: pt(9.9, 5.5))
+        p.addCurve(to: pt(12.0, 3.1), control1: pt(9.9, 4.1), control2: pt(10.8, 3.1))
+        p.closeSubpath()
+        return p
+    }
+}
+
+struct BlossomMark: View {
+    let color: Color
+    var body: some View {
+        ZStack {
+            ForEach(0..<6, id: \.self) { i in
+                BlossomPetal()
+                    .fill(color)
+                    .rotationEffect(.degrees(Double(i) * 60))
+            }
+            Circle()
+                .frame(width: 4.5, height: 4.5)
+                .blendMode(.destinationOut)
+        }
+        .compositingGroup()
     }
 }
 // Keep these semantic colors aligned with src/style.css in both appearances.
@@ -77,7 +101,7 @@ struct PanelView: View {
     }
     private var header: some View {
         HStack(spacing: 8) {
-            Gauge().stroke(accent, style: StrokeStyle(lineWidth: 1.8, lineCap: .round)).frame(width: 18, height: 18)
+            BlossomMark(color: accent).frame(width: 17, height: 17)
                 .frame(width: 26, height: 26).background(theme.soft, in: RoundedRectangle(cornerRadius: 7))
             Text("CDXScope").font(.system(size: 13, weight: .semibold))
             Spacer()
@@ -157,6 +181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var timer: Timer?
     private var statusChanges: AnyCancellable?
     private var displayedReading: MenuBarReading?
+    private var displayedDark: Bool?
     private var lockFD: Int32 = -1
     func applicationDidFinishLaunching(_ notification: Notification) {
         do {
@@ -173,8 +198,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
             model = PanelModel(client: MonitorClient(base: try monitorURL(port: port)))
             NSApp.setActivationPolicy(.accessory)
-            // Keep a compact icon-sized slot, with room for the arc to overhang the digits.
-            item = NSStatusBar.system.statusItem(withLength: max(NSStatusBar.system.thickness, 26))
+            // Dynamic width adapts cleanly between single-window Pro (7D), dual-window (5h + WK), and unavailable states.
+            item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
             if let button = item.button {
                 button.imagePosition = .imageOnly
                 button.target = self; button.action = #selector(togglePanel)
@@ -219,12 +244,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let alert = NSAlert(); alert.messageText = "CDXScope needs setup"; alert.informativeText = "The local connection settings could not be read. Reinstall the menu bar app from the CDXScope project."; alert.runModal(); NSApp.terminate(nil)
         }
     }
+    private func isDarkMenuBar() -> Bool {
+        item?.button?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    }
     private func updateMenuBar() {
         guard let button = item?.button else { return }
         let reading = model.menuBarReading()
-        if displayedReading != reading {
-            button.image = MenuBarGauge.image(reading: reading)
+        let dark = isDarkMenuBar()
+        if displayedReading != reading || displayedDark != dark {
+            item.length = MenuBarGauge.width(reading: reading)
+            button.image = MenuBarGauge.image(reading: reading, darkBar: dark)
             displayedReading = reading
+            displayedDark = dark
         }
         button.toolTip = "\(reading.accessibilityLabel)\nClick for allowance history"
         button.setAccessibilityLabel(reading.accessibilityLabel)
