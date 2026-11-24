@@ -32,7 +32,7 @@ npm run menubar -- install
 npm run menubar -- status
 ```
 
-This builds a local `~/Applications/CDXScope.app`, installs its login entry, and enables the background collector. The menu bar renders a **Living Blossom** meter—a 6-petal blossom silhouette that fills bottom-to-top with your remaining Codex allowance, paired with a bold percentage and a compact window tag (`7D` for single-window Pro tiers, or stacked `WK / %` when two windows are reported), tinted amber below 15% and coral when depleted. Click it for allowance history, the current balance and reset time; **Open dashboard** opens the detailed interface. Both start after signing into macOS. Quitting the menu bar app leaves collection running. This source-built app is ad-hoc signed locally, not a notarized downloadable release. See the [menu bar guide](docs/public/menu-bar.md).
+This builds a local `~/Applications/CDXScope.app`, installs its login entry, and enables the background collector. The menu bar renders a **Living Codex Orb**—a circular `›_` prompt emblem that fills bottom-to-top with your remaining Codex allowance, paired with a bold percentage and a compact window tag (`7D` for single-window Pro tiers, or stacked `WK / %` when two windows are reported), tinted amber below 15% and coral when depleted. Click it for allowance history, the current balance and reset time; **Open dashboard** opens the detailed interface. Both start after signing into macOS. Quitting the menu bar app leaves collection running. This source-built app is ad-hoc signed locally, not a notarized downloadable release. See the [menu bar guide](docs/public/menu-bar.md).
 
 For background monitoring with only the browser dashboard:
 

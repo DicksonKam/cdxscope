@@ -127,51 +127,40 @@ struct MenuBarReading: Equatable {
     }
 }
 
-/// 6-petal geometric blossom rendered in CoreGraphics with true center alpha cutout and zero petal-overlap blotches.
-enum BlossomShape {
-    static func petalPath() -> CGPath {
-        let p = CGMutablePath()
-        // Defined in 24x24 top-down coordinates, then flipped to AppKit bottom-up by draw().
-        p.move(to: CGPoint(x: 12.0, y: 3.1))
-        p.addCurve(to: CGPoint(x: 16.0, y: 7.0), control1: CGPoint(x: 14.3, y: 3.1), control2: CGPoint(x: 16.0, y: 4.8))
-        p.addLine(to: CGPoint(x: 16.0, y: 10.6))
-        p.addCurve(to: CGPoint(x: 14.5, y: 12.0), control1: CGPoint(x: 16.0, y: 11.4), control2: CGPoint(x: 15.3, y: 12.0))
-        p.addLine(to: CGPoint(x: 11.1, y: 12.0))
-        p.addCurve(to: CGPoint(x: 9.9, y: 10.7), control1: CGPoint(x: 10.4, y: 12.0), control2: CGPoint(x: 9.9, y: 11.4))
-        p.addLine(to: CGPoint(x: 9.9, y: 5.5))
-        p.addCurve(to: CGPoint(x: 12.0, y: 3.1), control1: CGPoint(x: 9.9, y: 4.1), control2: CGPoint(x: 10.8, y: 3.1))
-        p.closeSubpath()
-        return p
-    }
-
+/// Circular Codex emblem rendered in CoreGraphics with a true alpha-transparent `›_` prompt cutout.
+enum CodexOrbShape {
     static func draw(in cg: CGContext, rect: CGRect, color: NSColor, alpha: CGFloat) {
-        let petal = petalPath()
         cg.saveGState()
         cg.setAlpha(alpha)
         cg.beginTransparencyLayer(auxiliaryInfo: nil)
-        // Map 24x24 top-down space into AppKit's bottom-up rect.
+        // Map 24x24 top-down coordinates into AppKit's bottom-up rect.
         cg.translateBy(x: rect.minX, y: rect.maxY)
         cg.scaleBy(x: rect.width / 24.0, y: -rect.height / 24.0)
+
+        // Solid circular orb
         cg.setFillColor(color.cgColor)
-        for i in 0..<6 {
-            cg.saveGState()
-            cg.translateBy(x: 12.0, y: 12.0)
-            cg.rotate(by: CGFloat(i) * (.pi / 3.0))
-            cg.translateBy(x: -12.0, y: -12.0)
-            cg.addPath(petal)
-            cg.fillPath()
-            cg.restoreGState()
-        }
-        // Punch a true alpha-transparent core in the blossom center.
-        cg.setBlendMode(.clear)
-        cg.addEllipse(in: CGRect(x: 12.0 - 2.8, y: 12.0 - 2.8, width: 5.6, height: 5.6))
+        cg.addEllipse(in: CGRect(x: 12.0 - 9.2, y: 12.0 - 9.2, width: 18.4, height: 18.4))
         cg.fillPath()
+
+        // Punch a true alpha-transparent `›_` prompt cutout in the center
+        cg.setBlendMode(.clear)
+        cg.setLineWidth(2.4)
+        cg.setLineCap(.round)
+        cg.setLineJoin(.round)
+        cg.beginPath()
+        cg.move(to: CGPoint(x: 7.8, y: 9.0))
+        cg.addLine(to: CGPoint(x: 11.1, y: 12.0))
+        cg.addLine(to: CGPoint(x: 7.8, y: 15.0))
+        cg.move(to: CGPoint(x: 12.6, y: 15.0))
+        cg.addLine(to: CGPoint(x: 16.4, y: 15.0))
+        cg.strokePath()
+
         cg.endTransparencyLayer()
         cg.restoreGState()
     }
 }
 
-/// Living Blossom menu bar meter: 6-petal blossom filled bottom-to-top by remaining % + bold % + compact window tag.
+/// Living Codex Orb menu bar meter: circular `›_` badge filled bottom-to-top by remaining % + bold % + compact window tag.
 enum MenuBarGauge {
     static let height: CGFloat = 22
 
@@ -206,19 +195,19 @@ enum MenuBarGauge {
         let image = NSImage(size: size, flipped: false) { _ in
             guard let cg = NSGraphicsContext.current?.cgContext else { return false }
 
-            // 1. Living Blossom silhouette (24% ghost top + solid liquid fill bottom-to-top)
+            // 1. Living Codex Orb silhouette (25% ghost top + solid liquid fill bottom-to-top)
             let logoRect = CGRect(x: 1.0, y: 2.25, width: 17.5, height: 17.5)
-            BlossomShape.draw(in: cg, rect: logoRect, color: primaryColor, alpha: 0.24)
+            CodexOrbShape.draw(in: cg, rect: logoRect, color: primaryColor, alpha: 0.25)
 
             if let rem = reading.remaining, rem.isFinite, rem > 0 {
                 let frac = CGFloat(min(100, max(0, rem)) / 100.0)
-                // Blossom artwork vertically spans y=[3.1..20.9] in the 24x24 box.
-                let baseY = logoRect.minY + (3.1 / 24.0) * logoRect.height
-                let spanH = (17.8 / 24.0) * logoRect.height
+                // Circle vertically spans y=[2.8..21.2] in the 24x24 box.
+                let baseY = logoRect.minY + (2.8 / 24.0) * logoRect.height
+                let spanH = (18.4 / 24.0) * logoRect.height
                 let fillH = spanH * frac
                 cg.saveGState()
                 cg.clip(to: CGRect(x: logoRect.minX - 1, y: baseY - 1, width: logoRect.width + 2, height: fillH + 1))
-                BlossomShape.draw(in: cg, rect: logoRect, color: primaryColor, alpha: 1.0)
+                CodexOrbShape.draw(in: cg, rect: logoRect, color: primaryColor, alpha: 1.0)
                 cg.restoreGState()
             }
 

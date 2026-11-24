@@ -3,36 +3,28 @@ import SwiftUI
 import Darwin
 import Combine
 
-struct BlossomPetal: Shape {
+struct CodexPromptGlyph: Shape {
     func path(in rect: CGRect) -> Path {
         let sx = rect.width / 24.0
         let sy = rect.height / 24.0
         func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: rect.minX + x * sx, y: rect.minY + y * sy) }
         var p = Path()
-        p.move(to: pt(12.0, 3.1))
-        p.addCurve(to: pt(16.0, 7.0), control1: pt(14.3, 3.1), control2: pt(16.0, 4.8))
-        p.addLine(to: pt(16.0, 10.6))
-        p.addCurve(to: pt(14.5, 12.0), control1: pt(16.0, 11.4), control2: pt(15.3, 12.0))
+        p.move(to: pt(7.8, 9.0))
         p.addLine(to: pt(11.1, 12.0))
-        p.addCurve(to: pt(9.9, 10.7), control1: pt(10.4, 12.0), control2: pt(9.9, 11.4))
-        p.addLine(to: pt(9.9, 5.5))
-        p.addCurve(to: pt(12.0, 3.1), control1: pt(9.9, 4.1), control2: pt(10.8, 3.1))
-        p.closeSubpath()
+        p.addLine(to: pt(7.8, 15.0))
+        p.move(to: pt(12.6, 15.0))
+        p.addLine(to: pt(16.4, 15.0))
         return p
     }
 }
 
-struct BlossomMark: View {
+struct CodexOrbMark: View {
     let color: Color
     var body: some View {
         ZStack {
-            ForEach(0..<6, id: \.self) { i in
-                BlossomPetal()
-                    .fill(color)
-                    .rotationEffect(.degrees(Double(i) * 60))
-            }
-            Circle()
-                .frame(width: 4.5, height: 4.5)
+            Circle().fill(color)
+            CodexPromptGlyph()
+                .stroke(style: StrokeStyle(lineWidth: 1.85, lineCap: .round, lineJoin: .round))
                 .blendMode(.destinationOut)
         }
         .compositingGroup()
@@ -101,7 +93,7 @@ struct PanelView: View {
     }
     private var header: some View {
         HStack(spacing: 8) {
-            BlossomMark(color: accent).frame(width: 17, height: 17)
+            CodexOrbMark(color: accent).frame(width: 17, height: 17)
                 .frame(width: 26, height: 26).background(theme.soft, in: RoundedRectangle(cornerRadius: 7))
             Text("CDXScope").font(.system(size: 13, weight: .semibold))
             Spacer()
