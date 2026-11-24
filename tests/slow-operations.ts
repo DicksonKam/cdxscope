@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 import { Operation } from "../server/operation.ts";
 import { ImportJob } from "../server/import-job.ts";
 
-const dir = mkdtempSync(`${tmpdir()}/quotascope-slow-operation-`);
+const dir = mkdtempSync(`${tmpdir()}/cdxscope-slow-operation-`);
 const entry = join(dir, "slow.mjs");
 writeFileSync(entry, "setTimeout(()=>process.exit(0),31000);");
 const job = new ImportJob(dir, 45000, pathToFileURL(entry));

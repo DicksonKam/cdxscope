@@ -19,9 +19,9 @@ import {
 import { Store } from "../server/store.ts";
 import { identityFactory } from "../server/privacy.ts";
 const fixture = () => {
-  const dir = mkdtempSync(`${tmpdir()}/quotascope-backups-`);
+  const dir = mkdtempSync(`${tmpdir()}/cdxscope-backups-`);
   identityFactory(dir);
-  const store = new Store(join(dir, "quotascope.sqlite"));
+  const store = new Store(join(dir, "cdxscope.sqlite"));
   store.attempt({ at: 1000, ok: true, message: "Fixture" });
   store.close();
   return dir;
@@ -32,7 +32,7 @@ test("snapshots verify database, matching identity, record counts and private pe
     folder = join(dir, "backups", result.id);
   assert.equal(verifyBackup(folder).counts.attempts, 1);
   assert.equal(statSync(join(folder, "identity.key")).mode & 0o777, 0o600);
-  assert.equal(statSync(join(folder, "quotascope.sqlite")).mode & 0o777, 0o600);
+  assert.equal(statSync(join(folder, "cdxscope.sqlite")).mode & 0o777, 0o600);
   writeFileSync(join(folder, "identity.key"), "tampered");
   assert.throws(() => verifyBackup(folder), /integrity/);
 });
@@ -53,7 +53,7 @@ test("retention moves only older verified automatic copies to recoverable Trash 
   assert.ok(existsSync(join(root, "auto-incomplete", "partial")));
   assert.equal(readdirSync(trash).length, 1);
   const recovered = join(trash, readdirSync(trash)[0]);
-  assert.ok(existsSync(join(recovered, "quotascope.sqlite")));
+  assert.ok(existsSync(join(recovered, "cdxscope.sqlite")));
   assert.equal(verifyBackup(recovered).id, first.id);
 });
 test("unavailable Trash keeps old backups while the new verified copy succeeds", () => {
@@ -81,20 +81,20 @@ test("restore accepts a verified snapshot from Trash and refuses tampered copies
       { encoding: "utf8" },
     );
   assert.equal(run(target).status, 0);
-  const restored = new Store(join(target, "quotascope.sqlite"));
+  const restored = new Store(join(target, "cdxscope.sqlite"));
   assert.equal(restored.attempts().length, 1);
   restored.close();
   writeFileSync(join(recovered, "identity.key"), "invalid");
   const rejected = join(dir, "rejected");
   assert.notEqual(run(rejected).status, 0);
   assert.equal(existsSync(rejected), false);
-  assert.equal(existsSync(join(dir, "quotascope.sqlite")), true);
+  assert.equal(existsSync(join(dir, "cdxscope.sqlite")), true);
 });
 
 test("daily schedule rechecks its last copy and replaces a damaged snapshot without deleting it", () => {
   const dir = fixture(),
     first = createBackup(dir, true, 1000);
-  const store = new Store(join(dir, "quotascope.sqlite"));
+  const store = new Store(join(dir, "cdxscope.sqlite"));
   store.set("lastBackup", first);
   store.close();
   assert.equal(ensureAutomaticBackup(dir, 2000).id, first.id);

@@ -10,7 +10,7 @@ import type { Observation, TokenEvent } from "../shared/types.ts";
 
 test("streamed JSON/CSV preserve export values, provenance, quoting, timezone and a consistent snapshot", async () => {
   const path = join(
-    mkdtempSync(join(tmpdir(), "quotascope-export-data-")),
+    mkdtempSync(join(tmpdir(), "cdxscope-export-data-")),
     "fixture.sqlite",
   );
   const store = new Store(path);

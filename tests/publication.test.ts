@@ -28,7 +28,7 @@ test("public source excludes personal evidence, databases and credentials and ma
       /^\.local|^docs\/(?!public\/)|\.sqlite|identity\.key|\.env/.test(file),
     ),
   );
-  const parent = mkdtempSync(join(tmpdir(), "quotascope-publication-"));
+  const parent = mkdtempSync(join(tmpdir(), "cdxscope-publication-"));
   const result = prepareRelease(root, parent);
   const manifest = JSON.parse(
     readFileSync(join(result.target, "publication-manifest.json"), "utf8"),
@@ -44,13 +44,13 @@ test("public source excludes personal evidence, databases and credentials and ma
 });
 
 test("unexpected files and symlinks fail closed rather than enter publication", () => {
-  const root = mkdtempSync(join(tmpdir(), "quotascope-publication-invalid-"));
+  const root = mkdtempSync(join(tmpdir(), "cdxscope-publication-invalid-"));
   for (const dir of publicRoots)
     mkdirSync(join(root, dir), { recursive: true });
   for (const file of publicFiles) copyFileSync(resolve(file), join(root, file));
   writeFileSync(join(root, "server/private.sqlite"), "private");
   assert.throws(() => publicationFiles(root), /Unexpected/);
-  const other = mkdtempSync(join(tmpdir(), "quotascope-publication-link-"));
+  const other = mkdtempSync(join(tmpdir(), "cdxscope-publication-link-"));
   for (const dir of publicRoots)
     if (dir !== "server") mkdirSync(join(other, dir), { recursive: true });
   for (const file of publicFiles)

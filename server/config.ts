@@ -17,9 +17,9 @@ export function configuration(
   env = process.env,
   home = homedir(),
 ): Configuration {
-  const base = join(home, "Library", "Application Support", "QuotaScope");
+  const base = join(home, "Library", "Application Support", "CDXScope");
   const settingsPath = resolve(
-    env.QUOTASCOPE_CONFIG ?? join(base, "settings.json"),
+    env.CDXSCOPE_CONFIG ?? join(base, "settings.json"),
   );
   let saved: {
     dataDir?: string;
@@ -37,7 +37,7 @@ export function configuration(
       (saved.logRoot !== undefined && typeof saved.logRoot !== "string")
     )
       throw Error(
-        "Invalid QuotaScope settings. Restore a valid settings.json or use QUOTASCOPE_CONFIG.",
+        "Invalid CDXScope settings. Restore a valid settings.json or use CDXSCOPE_CONFIG.",
       );
   }
   const port = Number(env.PORT ?? saved.port ?? 4317);
@@ -45,31 +45,31 @@ export function configuration(
     throw Error("PORT must be an integer between 1024 and 65535.");
   const legacyDir = join(root, ".local");
   if (
-    !env.QUOTASCOPE_DATA_DIR &&
+    !env.CDXSCOPE_DATA_DIR &&
     saved.dataDir &&
     resolve(saved.dataDir) !== legacyDir &&
-    !existsSync(join(saved.dataDir, "quotascope.sqlite")) &&
-    existsSync(join(legacyDir, "quotascope.sqlite"))
+    !existsSync(join(saved.dataDir, "cdxscope.sqlite")) &&
+    existsSync(join(legacyDir, "cdxscope.sqlite"))
   ) {
     throw Error(
-      "Saved history location is unavailable and this checkout contains existing history. Set QUOTASCOPE_DATA_DIR to the intended history directory and reinstall; the existing data was preserved.",
+      "Saved history location is unavailable and this checkout contains existing history. Set CDXSCOPE_DATA_DIR to the intended history directory and reinstall; the existing data was preserved.",
     );
   }
   const legacy =
-    !env.QUOTASCOPE_DATA_DIR &&
+    !env.CDXSCOPE_DATA_DIR &&
     !saved.dataDir &&
-    existsSync(join(legacyDir, "quotascope.sqlite"));
+    existsSync(join(legacyDir, "cdxscope.sqlite"));
   return {
     root,
     settingsPath,
     port,
     legacy,
     dataDir: resolve(
-      env.QUOTASCOPE_DATA_DIR ??
+      env.CDXSCOPE_DATA_DIR ??
         saved.dataDir ??
         (legacy ? legacyDir : join(base, "data")),
     ),
-    logRoot: env.QUOTASCOPE_LOG_ROOT ?? saved.logRoot,
-    codex: env.QUOTASCOPE_CODEX ?? saved.codex ?? "codex",
+    logRoot: env.CDXSCOPE_LOG_ROOT ?? saved.logRoot,
+    codex: env.CDXSCOPE_CODEX ?? saved.codex ?? "codex",
   };
 }

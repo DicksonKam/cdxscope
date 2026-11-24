@@ -7,11 +7,11 @@ import { accountSnapshot } from "../server/account.ts";
 import { identityFactory } from "../server/privacy.ts";
 
 // This preview never invokes a real account adapter or reads the user's source logs.
-const dir = mkdtempSync(join(tmpdir(), "quotascope-demo-"));
+const dir = mkdtempSync(join(tmpdir(), "cdxscope-demo-"));
 const logs = join(dir, "empty-logs");
 mkdirSync(logs);
 const hash = identityFactory(dir);
-const store = new Store(join(dir, "quotascope.sqlite"));
+const store = new Store(join(dir, "cdxscope.sqlite"));
 const now = Date.now();
 for (let minute = 120; minute >= 0; minute--) {
   const raw = {
@@ -50,9 +50,9 @@ const child = spawn(
     env: {
       ...process.env,
       PORT: process.env.PORT ?? "4328",
-      QUOTASCOPE_DATA_DIR: dir,
-      QUOTASCOPE_LOG_ROOT: logs,
-      QUOTASCOPE_CODEX: join(dir, "no-real-provider"),
+      CDXSCOPE_DATA_DIR: dir,
+      CDXSCOPE_LOG_ROOT: logs,
+      CDXSCOPE_CODEX: join(dir, "no-real-provider"),
     },
     stdio: "inherit",
   },

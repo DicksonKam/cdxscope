@@ -5,10 +5,10 @@ import { mkdtempSync, writeFileSync, chmodSync } from "node:fs";
 import { join } from "node:path";
 import { readAccount, AccountReadError } from "../server/account.ts";
 test("account transport times out, tolerates closed connections and recovers without changing authentication", async () => {
-  const dir = mkdtempSync(`${tmpdir()}/quotascope-account-`),
+  const dir = mkdtempSync(`${tmpdir()}/cdxscope-account-`),
     cli = join(dir, "fixture.mjs");
-  const previous = process.env.QUOTASCOPE_CODEX;
-  process.env.QUOTASCOPE_CODEX = cli;
+  const previous = process.env.CDXSCOPE_CODEX;
+  process.env.CDXSCOPE_CODEX = cli;
   const script = (body: string) => {
     writeFileSync(cli, "#!/usr/bin/env node\n" + body);
     chmodSync(cli, 0o700);
@@ -40,7 +40,7 @@ test("account transport times out, tolerates closed connections and recovers wit
     );
     assert.deepEqual(await readAccount(3000), { fixture: "recovered" });
   } finally {
-    if (previous === undefined) delete process.env.QUOTASCOPE_CODEX;
-    else process.env.QUOTASCOPE_CODEX = previous;
+    if (previous === undefined) delete process.env.CDXSCOPE_CODEX;
+    else process.env.CDXSCOPE_CODEX = previous;
   }
 });

@@ -84,7 +84,7 @@ export function prepareRelease(
 ) {
   const files = publicationFiles(root);
   mkdirSync(parent, { recursive: true, mode: 0o700 });
-  const target = mkdtempSync(join(parent, "quotascope-source-"));
+  const target = mkdtempSync(join(parent, "cdxscope-source-"));
   const hashes: Record<string, string> = {};
   for (const file of files) {
     const destination = join(target, file);

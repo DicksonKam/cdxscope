@@ -37,7 +37,7 @@ try {
   check(
     "storage",
     false,
-    "Choose a writable QUOTASCOPE_DATA_DIR and reinstall the service.",
+    "Choose a writable CDXSCOPE_DATA_DIR and reinstall the service.",
   );
 }
 check(
@@ -62,7 +62,7 @@ try {
   check(
     "account capability",
     false,
-    "Check QUOTASCOPE_CODEX, then sign in through Codex and rerun doctor.",
+    "Check CDXSCOPE_CODEX, then sign in through Codex and rerun doctor.",
   );
 }
 try {
@@ -79,7 +79,7 @@ try {
     "port",
     own,
     own
-      ? `QuotaScope responds on port ${config.port}.`
+      ? `CDXScope responds on port ${config.port}.`
       : `Port ${config.port} belongs to an unrecognized service. Choose another PORT.`,
   );
   const latest = status.attempts?.[0];
@@ -104,9 +104,9 @@ try {
     !occupied,
     occupied
       ? `Port ${config.port} is occupied by an unrecognized or unresponsive service. Choose another PORT.`
-      : `Port ${config.port} is available. Start QuotaScope.`,
+      : `Port ${config.port} is available. Start CDXScope.`,
   );
-  check("recent collection", false, "Start QuotaScope, then rerun doctor.");
+  check("recent collection", false, "Start CDXScope, then rerun doctor.");
 }
 const plist = join(homedir(), "Library/LaunchAgents", serviceLabel + ".plist");
 const expected = launchAgent(

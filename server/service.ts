@@ -76,11 +76,11 @@ if (command === "prepare") {
   if (installed()) {
     const old = readFileSync(plist, "utf8");
     if (
-      !old.includes("<key>QUOTASCOPE_DATA_DIR</key>") ||
+      !old.includes("<key>CDXSCOPE_DATA_DIR</key>") ||
       !old.includes("server/index.ts")
     )
       throw new Error(
-        "The installed agent is not recognized as QuotaScope. Preserve it and resolve the label conflict.",
+        "The installed agent is not recognized as CDXScope. Preserve it and resolve the label conflict.",
       );
     if (old !== xml)
       copyFileSync(plist, join(folder, `previous-agent-${Date.now()}.plist`));

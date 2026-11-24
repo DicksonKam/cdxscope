@@ -79,7 +79,7 @@ struct PanelView: View {
         HStack(spacing: 8) {
             Gauge().stroke(accent, style: StrokeStyle(lineWidth: 1.8, lineCap: .round)).frame(width: 18, height: 18)
                 .frame(width: 26, height: 26).background(theme.soft, in: RoundedRectangle(cornerRadius: 7))
-            Text("QuotaScope").font(.system(size: 13, weight: .semibold))
+            Text("CDXScope").font(.system(size: 13, weight: .semibold))
             Spacer()
             if model.busy || model.historyBusy { ProgressView().controlSize(.small) }
             Button(action: { Task { await model.update(refresh: true); await model.updateHistory(force: true) } }) {
@@ -182,7 +182,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             updateMenuBar()
             // Receive after @Published mutations, including refreshes and window selection in the panel.
             statusChanges = model.objectWillChange.receive(on: RunLoop.main).sink { [weak self] _ in self?.updateMenuBar() }
-            panel.title = "QuotaScope history"
+            panel.title = "CDXScope history"
             panel.isReleasedWhenClosed = false
             panel.level = .popUpMenu
             panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
@@ -216,7 +216,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
             Task { await poll() }
         } catch {
-            let alert = NSAlert(); alert.messageText = "QuotaScope needs setup"; alert.informativeText = "The local connection settings could not be read. Reinstall the menu bar app from the QuotaScope project."; alert.runModal(); NSApp.terminate(nil)
+            let alert = NSAlert(); alert.messageText = "CDXScope needs setup"; alert.informativeText = "The local connection settings could not be read. Reinstall the menu bar app from the CDXScope project."; alert.runModal(); NSApp.terminate(nil)
         }
     }
     private func updateMenuBar() {
@@ -262,9 +262,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if lockFD >= 0 { close(lockFD) }
     }
 }
-#if !QUOTASCOPE_SNAPSHOT
+#if !CDXSCOPE_SNAPSHOT
 @main
-struct QuotaScopeApplication {
+struct CDXScopeApplication {
     @MainActor static func main() {
         let app = NSApplication.shared
         let delegate = AppDelegate()

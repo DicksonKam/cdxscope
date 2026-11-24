@@ -46,7 +46,7 @@ func payload(version: Int = 1, used: Double = 27, ok: Bool = true, enabled: Bool
             MenuBarReading(status: status, window: window ?? status?.windows.first, unavailable: unavailable, now: now)
         }
         precondition(label().title == "73%" && label().detail.contains("Codex · 7 days"))
-        precondition(label().accessibilityLabel == "QuotaScope — Codex · 7 days: 73% remaining")
+        precondition(label().accessibilityLabel == "CDXScope — Codex · 7 days: 73% remaining")
         precondition(label(nil).title == "—" && label(nil).detail == "Connecting to monitor")
         precondition(label(unavailable: true).title == "—")
         precondition(label(now: clock.addingTimeInterval(179)).title == "73%")
@@ -96,9 +96,9 @@ func payload(version: Int = 1, used: Double = 27, ok: Bool = true, enabled: Bool
             precondition(request.url!.host == "127.0.0.1")
             if request.httpMethod == "POST" {
                 precondition(request.value(forHTTPHeaderField: "Origin") == "http://127.0.0.1:4317")
-                precondition(request.value(forHTTPHeaderField: "X-QuotaScope-Token") == "fresh-token")
+                precondition(request.value(forHTTPHeaderField: "X-CDXScope-Token") == "fresh-token")
                 precondition(request.value(forHTTPHeaderField: "Content-Type") == "application/json")
-            } else { precondition(request.value(forHTTPHeaderField: "X-QuotaScope-Token") == nil) }
+            } else { precondition(request.value(forHTTPHeaderField: "X-CDXScope-Token") == nil) }
             return (200,payload())
         }
         _ = try await client.read(refresh: true)

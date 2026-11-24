@@ -34,7 +34,7 @@ const record = (id: string) =>
     },
   }) + "\n";
 function fixture() {
-  const dir = mkdtempSync(`${tmpdir()}/quotascope-scanner-recovery-`);
+  const dir = mkdtempSync(`${tmpdir()}/cdxscope-scanner-recovery-`);
   const logs = join(dir, "logs");
   mkdirSync(logs);
   return { logs, store: new Store(join(dir, "usage.sqlite")) };

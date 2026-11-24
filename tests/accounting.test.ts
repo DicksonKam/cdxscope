@@ -24,7 +24,7 @@ import { csvCell } from "../server/privacy.ts";
 import type { Observation, TokenEvent, Annotation } from "../shared/types.ts";
 const hash = (v: unknown) =>
   createHash("sha256").update(String(v)).digest("hex").slice(0, 20);
-const temp = () => mkdtempSync(`${tmpdir()}/quotascope-test-`);
+const temp = () => mkdtempSync(`${tmpdir()}/cdxscope-test-`);
 const usage = {
   input_tokens: 1000,
   cached_input_tokens: 700,
@@ -552,10 +552,10 @@ test("separated intervals with the same jittered reset remain one independent wi
 test("missing identifier salt refuses to create a second identity for existing data", async () => {
   const { identityFactory } = await import("../server/privacy.ts");
   const dir = temp();
-  writeFileSync(join(dir, "quotascope.sqlite"), "existing");
+  writeFileSync(join(dir, "cdxscope.sqlite"), "existing");
   assert.throws(() => identityFactory(dir), /salt is missing/);
   assert.equal(
-    readFileSync(join(dir, "quotascope.sqlite"), "utf8"),
+    readFileSync(join(dir, "cdxscope.sqlite"), "utf8"),
     "existing",
   );
 });

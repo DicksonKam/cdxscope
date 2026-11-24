@@ -13,11 +13,11 @@ const tables=['observations','events','attempts','annotations'];
 export function verifyBackup(folder:string):BackupManifest {
  const manifest=JSON.parse(readFileSync(join(folder,'manifest.json'),'utf8')) as BackupManifest;
  if(manifest.version!==1||!/^(auto|backup)-\d+-[0-9a-f-]{36}$/.test(manifest.id)||!Number.isFinite(manifest.createdAt)||typeof manifest.automatic!=='boolean')throw Error('Invalid backup manifest.');
- for(const name of ['quotascope.sqlite','identity.key']) {
+ for(const name of ['cdxscope.sqlite','identity.key']) {
   const path=join(folder,name);
   if(!lstatSync(path).isFile()||lstatSync(path).isSymbolicLink()||digest(path)!==manifest.hashes[name])throw Error('Backup integrity check failed.');
  }
- const db=new DatabaseSync(join(folder,'quotascope.sqlite'),{readOnly:true});
+ const db=new DatabaseSync(join(folder,'cdxscope.sqlite'),{readOnly:true});
  try {
   if(Object.values(db.prepare('PRAGMA quick_check').get()!)[0]!=='ok')throw Error('Backup database check failed.');
   if((db.prepare("SELECT value FROM meta WHERE key='schema'").get() as any)?.value!=='2')throw Error('Unsupported backup schema.');
@@ -37,7 +37,7 @@ export function rotateBackups(root:string,keep=7,trash=join(homedir(),'.Trash'),
  const obsolete=protectedId?candidates.filter(c=>c.manifest.id!==protectedId).slice(Math.max(0,keep-1)):candidates.slice(Math.max(1,keep));
  for(const candidate of obsolete) {
   if(!existsSync(trash)||!lstatSync(trash).isDirectory()||lstatSync(trash).isSymbolicLink())throw Error('Trash unavailable. Older backups were preserved.');
-  const target=join(trash,`quotascope-${candidate.manifest.id}-${randomUUID()}`);
+  const target=join(trash,`cdxscope-${candidate.manifest.id}-${randomUUID()}`);
   renameSync(candidate.folder,target);
   if(existsSync(candidate.folder)||!existsSync(target))throw Error('Could not verify recoverable backup move.');
   moved.push(target);
@@ -49,14 +49,14 @@ export function createBackup(dir:string,automatic:boolean,now=Date.now(),options
  if(lstatSync(root).isSymbolicLink())throw Error('Backup directory must not be a symbolic link.');
  const id=`${automatic?'auto':'backup'}-${now}-${randomUUID()}`,folder=join(root,id);
  mkdirSync(folder,{mode:0o700});
- const source=new Store(join(dir,'quotascope.sqlite'));
- try{source.backup(join(folder,'quotascope.sqlite'));}finally{source.close();}
- chmodSync(join(folder,'quotascope.sqlite'),0o600);
+ const source=new Store(join(dir,'cdxscope.sqlite'));
+ try{source.backup(join(folder,'cdxscope.sqlite'));}finally{source.close();}
+ chmodSync(join(folder,'cdxscope.sqlite'),0o600);
  copyFileSync(join(dir,'identity.key'),join(folder,'identity.key'));chmodSync(join(folder,'identity.key'),0o600);
- const snapshot=new DatabaseSync(join(folder,'quotascope.sqlite'),{readOnly:true});
+ const snapshot=new DatabaseSync(join(folder,'cdxscope.sqlite'),{readOnly:true});
  const counts:Record<string,number>={};
  try{for(const table of tables)counts[table]=(snapshot.prepare(`SELECT count(*) AS n FROM ${table}`).get() as any).n;}finally{snapshot.close();}
- const manifest:BackupManifest={version:1,id,createdAt:now,automatic,counts,hashes:Object.fromEntries(['quotascope.sqlite','identity.key'].map(name=>[name,digest(join(folder,name))]))};
+ const manifest:BackupManifest={version:1,id,createdAt:now,automatic,counts,hashes:Object.fromEntries(['cdxscope.sqlite','identity.key'].map(name=>[name,digest(join(folder,name))]))};
  writeFileSync(join(folder,'manifest.json'),JSON.stringify(manifest,null,2),{mode:0o600});
  verifyBackup(folder);
  // The new verified copy is kept even if Trash access prevents retention cleanup.
@@ -65,7 +65,7 @@ export function createBackup(dir:string,automatic:boolean,now=Date.now(),options
  return {id,at:now,verified:true,automatic,retentionWarning};
 }
 export function ensureAutomaticBackup(dir:string,now=Date.now()) {
- const store=new Store(join(dir,'quotascope.sqlite'));
+ const store=new Store(join(dir,'cdxscope.sqlite'));
  let last:ReturnType<typeof createBackup>|undefined;
  try{last=store.get('lastBackup');}finally{store.close();}
  if(last&&now-last.at>=0&&now-last.at<86400000&&/^(auto|backup)-\d+-[0-9a-f-]{36}$/.test(last.id)) {

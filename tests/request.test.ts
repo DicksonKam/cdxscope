@@ -18,7 +18,7 @@ test("a rejected stale action token is refreshed once after service restart", as
   assert.equal(calls.length, 3);
   assert.equal(calls[1].url, "/api/status");
   assert.equal(
-    (calls[2].options?.headers as any)["X-QuotaScope-Token"],
+    (calls[2].options?.headers as any)["X-CDXScope-Token"],
     "new-token",
   );
   assert.equal(calls[0].options?.body, calls[2].options?.body);

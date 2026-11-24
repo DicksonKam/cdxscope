@@ -127,7 +127,7 @@ test("login definition is user scoped, explicit about executables and safely esc
   assert.ok(xml.includes("A&amp;B"));
   assert.ok(xml.includes("<key>RunAtLoad</key><true/>"));
   assert.ok(xml.includes("<key>KeepAlive</key><true/>"));
-  assert.ok(xml.includes("QUOTASCOPE_MANAGED"));
+  assert.ok(xml.includes("CDXSCOPE_MANAGED"));
   assert.ok(!xml.includes("/Library/LaunchDaemons"));
   assert.ok(!xml.includes("turn/start"));
 });

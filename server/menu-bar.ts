@@ -22,7 +22,7 @@ const root = resolve(import.meta.dirname, ".."),
   config = configuration(root);
 const domain = `gui/${process.getuid!()}`,
   target = `${domain}/${menuBarLabel}`;
-const app = join(home, "Applications/QuotaScope.app");
+const app = join(home, "Applications/CDXScope.app");
 const plist = join(home, "Library/LaunchAgents", `${menuBarLabel}.plist`);
 function run(bin: string, args: string[], required = true) {
   const result = spawnSync(bin, args, { cwd: root, encoding: "utf8" });
@@ -43,7 +43,7 @@ function recognized() {
       ))
   )
     throw Error(
-      "Applications/QuotaScope.app is not recognized. It was preserved.",
+      "Applications/CDXScope.app is not recognized. It was preserved.",
     );
   if (
     existsSync(plist) &&
@@ -58,7 +58,7 @@ function build() {
   const builds = join(root, ".local/menu-bar-builds");
   mkdirSync(builds, { recursive: true });
   const build = mkdtempSync(join(builds, "build-")),
-    bundle = join(build, "QuotaScope.app"),
+    bundle = join(build, "CDXScope.app"),
     contents = join(bundle, "Contents");
   mkdirSync(join(contents, "MacOS"), { recursive: true });
   mkdirSync(join(contents, "Resources"));
@@ -70,18 +70,18 @@ function build() {
     `${process.arch === "arm64" ? "arm64" : "x86_64"}-apple-macos13.0`,
     "-module-cache-path",
     cache,
-    "macos/QuotaModel.swift",
+    "macos/CDXScopeModel.swift",
     "macos/HistoryModel.swift",
-    "macos/QuotaScope.swift",
+    "macos/CDXScope.swift",
     "macos/HistoryView.swift",
     "-o",
-    join(contents, "MacOS/QuotaScope"),
+    join(contents, "MacOS/CDXScope"),
     "-framework",
     "AppKit",
     "-framework",
     "SwiftUI",
   ]);
-  const iconset = join(build, "QuotaScope.iconset");
+  const iconset = join(build, "CDXScope.iconset");
   mkdirSync(iconset);
   const iconTool = join(build, "make-icon");
   run("/usr/bin/xcrun", [
@@ -98,7 +98,7 @@ function build() {
     "icns",
     iconset,
     "-o",
-    join(contents, "Resources/QuotaScope.icns"),
+    join(contents, "Resources/CDXScope.icns"),
   ]);
   writeFileSync(join(contents, "Info.plist"), appInfo());
   writeFileSync(
@@ -118,7 +118,7 @@ async function stop() {
     "/usr/bin/pgrep",
     [
       "-f",
-      `^${app.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/Contents/MacOS/QuotaScope$`,
+      `^${app.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/Contents/MacOS/CDXScope$`,
     ],
     false,
   );
@@ -178,9 +178,9 @@ else if (command === "install") {
   else run(process.execPath, ["--import", "tsx", "server/service.ts", "start"]);
   mkdirSync(join(home, "Applications"), { recursive: true });
   const stageFolder = mkdtempSync(
-    join(home, "Applications/.quotascope-install-"),
+    join(home, "Applications/.cdxscope-install-"),
   );
-  const stage = join(stageFolder, "QuotaScope.app");
+  const stage = join(stageFolder, "CDXScope.app");
   cpSync(bundle, stage, { recursive: true });
   run("/usr/bin/codesign", ["--verify", "--strict", stage]);
   await stop();

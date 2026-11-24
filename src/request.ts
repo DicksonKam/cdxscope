@@ -11,7 +11,7 @@ export async function performAction(
       signal: AbortSignal.timeout(30000),
       headers: {
         "Content-Type": "application/json",
-        "X-QuotaScope-Token": value,
+        "X-CDXScope-Token": value,
       },
       body: JSON.stringify(payload),
     });

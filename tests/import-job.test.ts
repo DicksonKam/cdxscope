@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import { ImportJob } from "../server/import-job.ts";
 import { Collector } from "../server/collector.ts";
 test("stalled imports neither overlap nor hold up account collection and time out", async () => {
-  const dir = mkdtempSync(`${tmpdir()}/quotascope-import-`),
+  const dir = mkdtempSync(`${tmpdir()}/cdxscope-import-`),
     entry = join(dir, "slow.mjs");
   writeFileSync(entry, "setInterval(()=>{},1000);");
   const job = new ImportJob(dir, 400, pathToFileURL(entry));
@@ -39,7 +39,7 @@ test("stalled imports neither overlap nor hold up account collection and time ou
   await job.stop();
 });
 test("a failed importer can retry successfully and shutdown stops a live import", async () => {
-  const dir = mkdtempSync(`${tmpdir()}/quotascope-import-`),
+  const dir = mkdtempSync(`${tmpdir()}/cdxscope-import-`),
     entry = join(dir, "worker.mjs");
   writeFileSync(entry, "process.exit(1);");
   const job = new ImportJob(dir, 3000, pathToFileURL(entry));

@@ -1,6 +1,6 @@
 # Menu bar app
 
-QuotaScope's native Mac app provides a compact history panel without a persistent Dock icon. It uses the same collector and saved history as the browser dashboard. Closing the panel, closing the browser or choosing **Quit menu bar app** does not stop background monitoring. macOS must be awake and signed in; missing readings during sleep or shutdown remain gaps.
+CDXScope's native Mac app provides a compact history panel without a persistent Dock icon. It uses the same collector and saved history as the browser dashboard. Closing the panel, closing the browser or choosing **Quit menu bar app** does not stop background monitoring. macOS must be awake and signed in; missing readings during sleep or shutdown remain gaps.
 
 ## Installation
 
@@ -12,7 +12,7 @@ npm run menubar -- status
 npm run service -- status
 ```
 
-The installer builds and verifies the app before changing an existing installation. It installs `~/Applications/QuotaScope.app` and a user LaunchAgent for the menu bar. The collector has its own login entry and remains the sole collector. An already-correct collector configuration is kept running. Existing app bundles and replaced menu-bar plists move to Trash, never permanent deletion. Unknown bundles/agents are preserved with an error. Keep the project folder and Node installation available: the collector still runs from that checkout.
+The installer builds and verifies the app before changing an existing installation. It installs `~/Applications/CDXScope.app` and a user LaunchAgent for the menu bar. The collector has its own login entry and remains the sole collector. An already-correct collector configuration is kept running. Existing app bundles and replaced menu-bar plists move to Trash, never permanent deletion. Unknown bundles/agents are preserved with an error. Keep the project folder and Node installation available: the collector still runs from that checkout.
 
 Both login entries run after signing into the graphical macOS session, including after a reboot followed by sign-in. The app is not a system-wide daemon and does not collect before login. macOS may require allowing background items in System Settings. This setup uses user LaunchAgents rather than a second app-managed login registration, avoiding duplicate startup mechanisms.
 

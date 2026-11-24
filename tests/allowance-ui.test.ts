@@ -118,11 +118,11 @@ test("first-run failures distinguish missing CLI from sign-in and preserve one r
         at: 0,
         ok: false,
         message:
-          "Codex CLI is unavailable. Set QUOTASCOPE_CODEX to its executable path.",
+          "Codex CLI is unavailable. Set CDXSCOPE_CODEX to its executable path.",
       },
     }),
   );
-  assert.match(missing, /Set QUOTASCOPE_CODEX/);
+  assert.match(missing, /Set CDXSCOPE_CODEX/);
   assert.equal((missing.match(/<button/g) ?? []).length, 1);
   const login = renderToStaticMarkup(
     React.createElement(MonitoringHealth, {

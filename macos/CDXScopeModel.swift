@@ -49,7 +49,7 @@ struct MenuBarReading: Equatable {
     let title: String
     let remaining: Double?
     let detail: String
-    var accessibilityLabel: String { "QuotaScope — \(detail)" }
+    var accessibilityLabel: String { "CDXScope — \(detail)" }
 
     init(status: Status?, window: Allowance?, unavailable: Bool, now: Date) {
         var reason: String?
@@ -174,7 +174,7 @@ final class MonitorClient {
             request.httpBody = Data("{}".utf8)
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(base.absoluteString, forHTTPHeaderField: "Origin")
-            request.setValue(token, forHTTPHeaderField: "X-QuotaScope-Token")
+            request.setValue(token, forHTTPHeaderField: "X-CDXScope-Token")
         }
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200, data.count < 2_000_000 else { throw MonitorError.response }

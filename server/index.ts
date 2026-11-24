@@ -28,7 +28,7 @@ const config = configuration();
 const { port, root, dataDir: dir } = config;
 mkdirSync(dir, { recursive: true, mode: 0o700 });
 const hash = identityFactory(dir),
-  store = new Store(join(dir, "quotascope.sqlite"));
+  store = new Store(join(dir, "cdxscope.sqlite"));
 chmodSync(store.path, 0o600);
 const csrf = randomBytes(32).toString("hex");
 let refreshing: Promise<CollectResult> | null = null;
@@ -68,7 +68,7 @@ const importJob = new ImportJob(
   dir,
   120000,
   undefined,
-  config.logRoot ? { QUOTASCOPE_LOG_ROOT: config.logRoot } : {},
+  config.logRoot ? { CDXSCOPE_LOG_ROOT: config.logRoot } : {},
 );
 async function importLogs() {
   status.scanning = true;
@@ -119,7 +119,7 @@ function backup(automatic: boolean): Promise<boolean> {
     dir,
     120000,
     new URL("./backup-worker.ts", import.meta.url),
-    { QUOTASCOPE_BACKUP_MODE: automatic ? "automatic" : "manual" },
+    { CDXSCOPE_BACKUP_MODE: automatic ? "automatic" : "manual" },
   );
   backupFlight = backupJob
     .run()
@@ -156,7 +156,7 @@ function statusSnapshot(): DashboardStatus {
     status: { ...status },
     collector: {
       ...collector.state,
-      managed: process.env.QUOTASCOPE_MANAGED === "launchd",
+      managed: process.env.CDXSCOPE_MANAGED === "launchd",
     },
     importer: { ...importer.state },
     backup: {
@@ -252,7 +252,7 @@ const server = createServer(async (req, res) => {
   try {
     if (url.pathname.startsWith("/api/")) {
       if (req.method === "POST") {
-        const token = req.headers["x-quotascope-token"];
+        const token = req.headers["x-cdxscope-token"];
         if (
           !origin ||
           req.headers["content-type"] !== "application/json" ||
@@ -419,7 +419,7 @@ const server = createServer(async (req, res) => {
 // After sleep, read now rather than waiting out a retry delay that was frozen while asleep.
 let stopWakeWatch = () => {};
 server.listen(port, "127.0.0.1", () => {
-  console.log(`QuotaScope ready at http://127.0.0.1:${port}`);
+  console.log(`CDXScope ready at http://127.0.0.1:${port}`);
   void collector.cycle();
   void importer.cycle();
   void backupScheduler.cycle();
@@ -427,7 +427,7 @@ server.listen(port, "127.0.0.1", () => {
 });
 server.on("error", () => {
   console.error(
-    "QuotaScope could not bind its loopback port. Stop the other instance or choose a different PORT.",
+    "CDXScope could not bind its loopback port. Stop the other instance or choose a different PORT.",
   );
   store.close();
   process.exitCode = 1;

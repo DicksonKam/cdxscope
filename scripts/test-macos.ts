@@ -15,7 +15,7 @@ for (const [bin, args] of [
       "swiftc",
       "-module-cache-path",
       join(root, ".local/swift-module-cache"),
-      "macos/QuotaModel.swift",
+      "macos/CDXScopeModel.swift",
       "macos/HistoryModel.swift",
       "macos/ModelTests.swift",
       "-o",

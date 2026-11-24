@@ -194,7 +194,7 @@ test("account switches and unknown identity never join pace or mismatched local 
 
 test("snapshot, windows and successful attempt commit atomically and survive reopening", () => {
   const file = join(
-    mkdtempSync(`${tmpdir()}/quotascope-snapshot-`),
+    mkdtempSync(`${tmpdir()}/cdxscope-snapshot-`),
     "usage.sqlite",
   );
   let store = new Store(file);

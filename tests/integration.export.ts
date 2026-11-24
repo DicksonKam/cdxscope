@@ -9,7 +9,7 @@ import { Store } from "../server/store.ts";
 import { Collector } from "../server/collector.ts";
 import { ExportJob } from "../server/export-job.ts";
 
-const dir = mkdtempSync(join(tmpdir(), "quotascope-export-http-")),
+const dir = mkdtempSync(join(tmpdir(), "cdxscope-export-http-")),
   path = join(dir, "fixture.sqlite");
 const store = new Store(path),
   count = 50000,

@@ -1,6 +1,6 @@
 # Compatibility and verification scope
 
-QuotaScope is an early release candidate. Verification on 16 October 2026 used macOS 27.0.1 (26A434) / Apple Silicon and the bundled Codex CLI 0.162.0-alpha.17.2. The live service was checked on Node.js 23.9.0. This describes tested configurations, not a promise of uninterrupted monitoring or support for every ChatGPT feature.
+CDXScope is an early release candidate. Verification on 16 October 2026 used macOS 27.0.1 (26A434) / Apple Silicon and the bundled Codex CLI 0.162.0-alpha.17.2. The live service was checked on Node.js 23.9.0. This describes tested configurations, not a promise of uninterrupted monitoring or support for every ChatGPT feature.
 
 ## Current source checks
 
@@ -10,7 +10,7 @@ A separate Node 24.22.0 installation with only production dependencies and copie
 
 Node.js 22.13+ provides the SQLite API used here. `tsx` is a runtime dependency because both the server and child workers execute TypeScript. Development dependencies are needed to build the dashboard; production dependencies suffice to run its built assets.
 
-Every push runs all four [GitHub Actions jobs](https://github.com/DicksonKam/quotascope/actions/workflows/ci.yml) on hosted macOS and Linux runners with Node 22 and 24. macOS jobs also run native tests and the app build. Linux jobs verify the fixture-based server/dashboard suites, not the native Mac app or a real provider login. Passing on these runners does not establish compatibility with every Mac, future Node release or Codex CLI version.
+Every push runs all four [GitHub Actions jobs](https://github.com/DicksonKam/cdxscope/actions/workflows/ci.yml) on hosted macOS and Linux runners with Node 22 and 24. macOS jobs also run native tests and the app build. Linux jobs verify the fixture-based server/dashboard suites, not the native Mac app or a real provider login. Passing on these runners does not establish compatibility with every Mac, future Node release or Codex CLI version.
 
 ## Monitoring and recovery
 

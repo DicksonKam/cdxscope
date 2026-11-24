@@ -21,7 +21,7 @@ export class AccountReadError extends Error {
 }
 export function readAccount(
   timeoutMs = 20000,
-  executable = process.env.QUOTASCOPE_CODEX ?? "codex",
+  executable = process.env.CDXSCOPE_CODEX ?? "codex",
 ): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const child = spawn(
@@ -58,7 +58,7 @@ export function readAccount(
     child.on("error", () =>
       end(
         new AccountReadError(
-          "Codex CLI is unavailable. Set QUOTASCOPE_CODEX to its executable path.",
+          "Codex CLI is unavailable. Set CDXSCOPE_CODEX to its executable path.",
           false,
         ),
       ),
@@ -103,7 +103,7 @@ export function readAccount(
         if (msg.error)
           return end(
             new AccountReadError(
-              "Account usage is unavailable. If this persists, sign in through Codex; QuotaScope does not change authentication.",
+              "Account usage is unavailable. If this persists, sign in through Codex; CDXScope does not change authentication.",
               true,
             ),
           );
@@ -114,7 +114,7 @@ export function readAccount(
           id: msg.id,
           error: {
             code: -32601,
-            message: "Unsupported by read-only QuotaScope",
+            message: "Unsupported by read-only CDXScope",
           },
         });
       }
@@ -124,8 +124,8 @@ export function readAccount(
       method: "initialize",
       params: {
         clientInfo: {
-          name: "quotascope",
-          title: "QuotaScope",
+          name: "cdxscope",
+          title: "CDXScope",
           version: "0.1.0",
         },
         capabilities: { experimentalApi: true },

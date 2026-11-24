@@ -7,17 +7,17 @@ import { configuration } from "../server/config.ts";
 import { launchAgent } from "../server/launch-agent.ts";
 
 test("fresh configuration is stable across checkout moves and retains explicit recovery selection", () => {
-  const home = mkdtempSync(`${tmpdir()}/quotascope-config-`);
+  const home = mkdtempSync(`${tmpdir()}/cdxscope-config-`);
   const first = configuration("/new checkout", {}, home);
   assert.equal(
     first.dataDir,
-    join(home, "Library/Application Support/QuotaScope/data"),
+    join(home, "Library/Application Support/CDXScope/data"),
   );
   assert.equal(
     configuration("/moved checkout", {}, home).dataDir,
     first.dataDir,
   );
-  mkdirSync(join(home, "Library/Application Support/QuotaScope"), {
+  mkdirSync(join(home, "Library/Application Support/CDXScope"), {
     recursive: true,
   });
   writeFileSync(
@@ -46,7 +46,7 @@ test("fresh configuration is stable across checkout moves and retains explicit r
   assert.ok(xml.includes("<key>ProcessType</key><string>Standard</string>"));
   const explicit = configuration(
     "/moved checkout",
-    { QUOTASCOPE_DATA_DIR: "/recovery override", PORT: "5124" },
+    { CDXSCOPE_DATA_DIR: "/recovery override", PORT: "5124" },
     home,
   );
   assert.equal(explicit.dataDir, "/recovery override");
@@ -54,9 +54,9 @@ test("fresh configuration is stable across checkout moves and retains explicit r
 });
 
 test("legacy history is preserved, invalid ports and settings are rejected", () => {
-  const root = mkdtempSync(`${tmpdir()}/quotascope-legacy-`);
+  const root = mkdtempSync(`${tmpdir()}/cdxscope-legacy-`);
   mkdirSync(join(root, ".local"));
-  writeFileSync(join(root, ".local/quotascope.sqlite"), "fixture");
+  writeFileSync(join(root, ".local/cdxscope.sqlite"), "fixture");
   const home = join(root, "home");
   assert.equal(configuration(root, {}, home).dataDir, join(root, ".local"));
   assert.equal(configuration(root, {}, home).legacy, true);
@@ -65,7 +65,7 @@ test("legacy history is preserved, invalid ports and settings are rejected", () 
   const settingsPath = join(root, "invalid.json");
   writeFileSync(settingsPath, '{"dataDir":42}');
   assert.throws(
-    () => configuration(root, { QUOTASCOPE_CONFIG: settingsPath }, home),
+    () => configuration(root, { CDXSCOPE_CONFIG: settingsPath }, home),
     /settings/,
   );
 });
@@ -73,7 +73,7 @@ test("legacy history is preserved, invalid ports and settings are rejected", () 
 test("service uninstall moves only its plist to recoverable Trash and refuses unavailable Trash", async () => {
   const { trashAgent } = await import("../server/service-files.ts");
   const { existsSync, readFileSync } = await import("node:fs");
-  const root = mkdtempSync(`${tmpdir()}/quotascope-uninstall-`);
+  const root = mkdtempSync(`${tmpdir()}/cdxscope-uninstall-`);
   const plist = join(root, "agent.plist"),
     data = join(root, "history.sqlite"),
     trash = join(root, "Trash");
@@ -101,24 +101,24 @@ test("reinstall waits for the unloading service rather than mistaking it for the
 });
 
 test("moving legacy history refuses a stale saved path until the new directory is explicitly selected", () => {
-  const root = mkdtempSync(`${tmpdir()}/quotascope-moved-`),
+  const root = mkdtempSync(`${tmpdir()}/cdxscope-moved-`),
     home = join(root, "home");
   const settings = join(root, "settings.json"),
     legacy = join(root, ".local");
   mkdirSync(legacy);
-  writeFileSync(join(legacy, "quotascope.sqlite"), "history");
+  writeFileSync(join(legacy, "cdxscope.sqlite"), "history");
   writeFileSync(
     settings,
     JSON.stringify({ dataDir: join(root, "old-location", ".local") }),
   );
   assert.throws(
-    () => configuration(root, { QUOTASCOPE_CONFIG: settings }, home),
+    () => configuration(root, { CDXSCOPE_CONFIG: settings }, home),
     /existing history/,
   );
   assert.equal(
     configuration(
       root,
-      { QUOTASCOPE_CONFIG: settings, QUOTASCOPE_DATA_DIR: legacy },
+      { CDXSCOPE_CONFIG: settings, CDXSCOPE_DATA_DIR: legacy },
       home,
     ).dataDir,
     legacy,

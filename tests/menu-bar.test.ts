@@ -18,7 +18,7 @@ import { spawnSync } from "node:child_process";
 import { trashAgent } from "../server/service-files.ts";
 
 test("menu bar login starts in a GUI session without a Dock icon and permits intentional quit", () => {
-  const plist = menuBarAgent("/Applications/A & B/QuotaScope.app");
+  const plist = menuBarAgent("/Applications/A & B/CDXScope.app");
   assert.ok(plist.includes("A &amp; B"));
   assert.ok(plist.includes("<key>RunAtLoad</key><true/>"));
   assert.ok(plist.includes("<key>SuccessfulExit</key><false/>"));
@@ -27,7 +27,7 @@ test("menu bar login starts in a GUI session without a Dock icon and permits int
   assert.ok(appInfo().includes("<key>LSUIElement</key><true/>"));
   assert.ok(appInfo().includes(menuBarLabel));
   if (process.platform === "darwin") {
-    const dir = mkdtempSync(join(tmpdir(), "quotascope-native-plist-"));
+    const dir = mkdtempSync(join(tmpdir(), "cdxscope-native-plist-"));
     for (const [name, content] of [
       ["agent.plist", plist],
       ["Info.plist", appInfo()],
@@ -39,8 +39,8 @@ test("menu bar login starts in a GUI session without a Dock icon and permits int
   }
 });
 test("app bundle removal remains recoverable and preserves bundle contents", () => {
-  const dir = mkdtempSync(join(tmpdir(), "quotascope-app-trash-")),
-    app = join(dir, "QuotaScope.app"),
+  const dir = mkdtempSync(join(tmpdir(), "cdxscope-app-trash-")),
+    app = join(dir, "CDXScope.app"),
     trash = join(dir, "Trash");
   mkdirSync(app);
   writeFileSync(join(app, "fixture"), "preserve");

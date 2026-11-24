@@ -1,6 +1,6 @@
 import { dirname, join } from "node:path";
 import type { Configuration } from "./config.ts";
-export const serviceLabel = "com.dicksonkam.quotascope";
+export const serviceLabel = "com.dicksonkam.cdxscope";
 export function launchAgent(
   root: string,
   home: string,
@@ -10,7 +10,7 @@ export function launchAgent(
 ) {
   const dataDir =
     config?.dataDir ??
-    join(home, "Library/Application Support/QuotaScope/data");
+    join(home, "Library/Application Support/CDXScope/data");
   const escape = (s: string) =>
     s
       .replaceAll("&", "&amp;")
@@ -29,8 +29,8 @@ export function launchAgent(
 <key>ProcessType</key><string>Standard</string><key>ExitTimeOut</key><integer>30</integer>
 <key>EnvironmentVariables</key><dict>
 <key>HOME</key>${string(home)}<key>PATH</key>${string([dirname(node), "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"].join(":"))}
-<key>PORT</key>${string(String(config?.port ?? 4317))}<key>QUOTASCOPE_DATA_DIR</key>${string(dataDir)}<key>QUOTASCOPE_CONFIG</key>${string(config?.settingsPath ?? join(home, "Library/Application Support/QuotaScope/settings.json"))}
-${config?.logRoot ? "<key>QUOTASCOPE_LOG_ROOT</key>" + string(config.logRoot) : ""}<key>QUOTASCOPE_CODEX</key>${string(codex)}<key>QUOTASCOPE_MANAGED</key><string>launchd</string>
+<key>PORT</key>${string(String(config?.port ?? 4317))}<key>CDXSCOPE_DATA_DIR</key>${string(dataDir)}<key>CDXSCOPE_CONFIG</key>${string(config?.settingsPath ?? join(home, "Library/Application Support/CDXScope/settings.json"))}
+${config?.logRoot ? "<key>CDXSCOPE_LOG_ROOT</key>" + string(config.logRoot) : ""}<key>CDXSCOPE_CODEX</key>${string(codex)}<key>CDXSCOPE_MANAGED</key><string>launchd</string>
 </dict><key>StandardOutPath</key>${string(join(dataDir, "service/stdout.log"))}
 <key>StandardErrorPath</key>${string(join(dataDir, "service/stderr.log"))}
 </dict></plist>\n`;

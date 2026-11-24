@@ -1,12 +1,12 @@
-# QuotaScope
+# CDXScope
 
 A private, local allowance dashboard for Mac users with a signed-in Codex account. See how much remains in each reported window, when it resets, and whether monitoring is healthy.
 
-QuotaScope reads the allowance windows returned by your installed Codex app-server. It does **not** monitor every ChatGPT model, tool, device or subscription feature. It is an independent project, not an OpenAI product.
+CDXScope reads the allowance windows returned by your installed Codex app-server. It does **not** monitor every ChatGPT model, tool, device or subscription feature. It is an independent project, not an OpenAI product.
 
 **Release status: early preview — source builds only.** Automated local checks pass, and sleep/wake recovery has been observed on the development Mac. This preview is intended for evaluation; it is not a notarized downloadable Mac app.
 
-Every push runs the [GitHub Actions matrix](https://github.com/DicksonKam/quotascope/actions/workflows/ci.yml) on macOS and Linux with Node 22 and 24.
+Every push runs the [GitHub Actions matrix](https://github.com/DicksonKam/cdxscope/actions/workflows/ci.yml) on macOS and Linux with Node 22 and 24.
 
 Remaining validation includes the 72-hour monitoring observation, a real logout/login startup check, and broader Mac compatibility. Intel, older macOS, a fresh physical Mac, physical multi-monitor/Spaces behavior and the latest native dark appearance remain unverified. See the [release checklist](docs/public/release-checklist.md) and [compatibility scope](docs/public/compatibility.md) for exact evidence and limitations.
 
@@ -23,7 +23,7 @@ npm run doctor
 npm start
 ```
 
-Open <http://127.0.0.1:4317>. Doctor can report that the service is not running before the first start. For an executable outside PATH, set `QUOTASCOPE_CODEX` to its absolute path. Sign in through Codex itself; QuotaScope never changes authentication.
+Open <http://127.0.0.1:4317>. Doctor can report that the service is not running before the first start. For an executable outside PATH, set `CDXSCOPE_CODEX` to its absolute path. Sign in through Codex itself; CDXScope never changes authentication.
 
 For a native menu bar panel with no Dock icon, install Apple's Command Line Tools (`xcode-select --install` if needed), then run:
 
@@ -32,7 +32,7 @@ npm run menubar -- install
 npm run menubar -- status
 ```
 
-This builds a local `~/Applications/QuotaScope.app`, installs its login entry, and enables the background collector. The menu bar shows your remaining percentage beneath a compact arc with an outward pointer (empty on the left, full on the right), updated even with the panel closed. Click it for allowance history, the current balance and reset time; **Open dashboard** opens the detailed interface. Both start after signing into macOS. Quitting the menu bar app leaves collection running. This source-built app is ad-hoc signed locally, not a notarized downloadable release. See the [menu bar guide](docs/public/menu-bar.md).
+This builds a local `~/Applications/CDXScope.app`, installs its login entry, and enables the background collector. The menu bar shows your remaining percentage beneath a compact arc with an outward pointer (empty on the left, full on the right), updated even with the panel closed. Click it for allowance history, the current balance and reset time; **Open dashboard** opens the detailed interface. Both start after signing into macOS. Quitting the menu bar app leaves collection running. This source-built app is ad-hoc signed locally, not a notarized downloadable release. See the [menu bar guide](docs/public/menu-bar.md).
 
 For background monitoring with only the browser dashboard:
 

@@ -9,7 +9,7 @@ export class ImportJob {
   if(this.flight)return this.flight;
   if(this.stopping)return Promise.resolve(false);
   this.flight=new Promise<boolean>(resolve=>{
-   const child=this.child=spawn(process.execPath,['--import','tsx',fileURLToPath(this.entry)],{env:{...process.env,QUOTASCOPE_DATA_DIR:this.dir,...this.extraEnv},stdio:'ignore'});
+   const child=this.child=spawn(process.execPath,['--import','tsx',fileURLToPath(this.entry)],{env:{...process.env,CDXSCOPE_DATA_DIR:this.dir,...this.extraEnv},stdio:'ignore'});
    let expired=false,killer:ReturnType<typeof setTimeout>|undefined;
    const timer=setTimeout(()=>{expired=true;child.kill('SIGTERM');killer=setTimeout(()=>child.kill('SIGKILL'),1500);},this.timeoutMs);
    child.once('error',()=>finish(false));

@@ -130,7 +130,7 @@ export function MonitoringHealth({
               ? "The dashboard cannot reach the local service. Saved readings are preserved."
               : attempt?.ok === false
                 ? attempt.message.includes("CLI is unavailable")
-                  ? "Set QUOTASCOPE_CODEX to the installed Codex executable, reinstall the service, then try again. Run npm run doctor for setup checks."
+                  ? "Set CDXSCOPE_CODEX to the installed Codex executable, reinstall the service, then try again. Run npm run doctor for setup checks."
                   : "Checks retry automatically, up to five minutes apart. Open Codex and check sign-in, then try again."
                 : "The latest reading is overdue. This can happen after sleep; the service will check again automatically."}
           </p>

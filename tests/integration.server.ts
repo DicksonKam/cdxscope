@@ -17,7 +17,7 @@ import { launchAgent } from "../server/launch-agent.ts";
 import { Store } from "../server/store.ts";
 import { once } from "node:events";
 import { request, createServer } from "node:http";
-const dir = mkdtempSync(`${tmpdir()}/quotascope-integration-`),
+const dir = mkdtempSync(`${tmpdir()}/cdxscope-integration-`),
   logs = join(dir, "logs"),
   dataDir = join(dir, "data"),
   config = join(dir, "state.json"),
@@ -28,7 +28,7 @@ writeFileSync(
   cli,
   `#!/usr/bin/env node
 import {createInterface} from 'node:readline';import {readFileSync} from 'node:fs';
-createInterface({input:process.stdin}).on('line',line=>{const m=JSON.parse(line);if(m.id===1)console.log(JSON.stringify({id:1,result:{}}));if(m.id===2){const state=JSON.parse(readFileSync(process.env.QUOTASCOPE_FIXTURE_STATE,'utf8'));console.log(JSON.stringify(state.fail?{id:2,error:{code:-32000,message:'PRIVATE_ERROR_SHOULD_NOT_LEAK'}}:{id:2,result:state.result??{accountId:'fixture-private-account',rateLimits:{limitId:'codex',planType:'prolite',primary:{usedPercent:10,windowDurationMins:10080,resetsAt:Math.floor(Date.now()/1000)+86400}},rateLimitResetCredits:{availableCount:3}}}));}});
+createInterface({input:process.stdin}).on('line',line=>{const m=JSON.parse(line);if(m.id===1)console.log(JSON.stringify({id:1,result:{}}));if(m.id===2){const state=JSON.parse(readFileSync(process.env.CDXSCOPE_FIXTURE_STATE,'utf8'));console.log(JSON.stringify(state.fail?{id:2,error:{code:-32000,message:'PRIVATE_ERROR_SHOULD_NOT_LEAK'}}:{id:2,result:state.result??{accountId:'fixture-private-account',rateLimits:{limitId:'codex',planType:'prolite',primary:{usedPercent:10,windowDurationMins:10080,resetsAt:Math.floor(Date.now()/1000)+86400}},rateLimitResetCredits:{availableCount:3}}}));}});
 `,
 );
 chmodSync(cli, 0o700);
@@ -78,10 +78,10 @@ function start(logRoot = logs) {
       env: {
         ...process.env,
         PORT: String(port),
-        QUOTASCOPE_DATA_DIR: dataDir,
-        QUOTASCOPE_LOG_ROOT: logRoot,
-        QUOTASCOPE_CODEX: cli,
-        QUOTASCOPE_FIXTURE_STATE: config,
+        CDXSCOPE_DATA_DIR: dataDir,
+        CDXSCOPE_LOG_ROOT: logRoot,
+        CDXSCOPE_CODEX: cli,
+        CDXSCOPE_FIXTURE_STATE: config,
       },
       stdio: "ignore",
     },
@@ -138,10 +138,10 @@ try {
       env: {
         ...process.env,
         PORT: String(doctorPort),
-        QUOTASCOPE_DATA_DIR: doctorDir,
-        QUOTASCOPE_CONFIG: join(dir, "unused-settings.json"),
-        QUOTASCOPE_CODEX: cli,
-        QUOTASCOPE_FIXTURE_STATE: config,
+        CDXSCOPE_DATA_DIR: doctorDir,
+        CDXSCOPE_CONFIG: join(dir, "unused-settings.json"),
+        CDXSCOPE_CODEX: cli,
+        CDXSCOPE_FIXTURE_STATE: config,
       },
     });
   const diagnosis = runDoctor(port),
@@ -178,7 +178,7 @@ try {
       headers: {
         Origin: base,
         "Content-Type": "application/json",
-        "X-QuotaScope-Token": d.csrf,
+        "X-CDXScope-Token": d.csrf,
         ...headers,
       },
       body: JSON.stringify(body),
@@ -189,7 +189,7 @@ try {
     "foreign origin rejected",
   );
   verify(
-    (await post("refresh", {}, { "X-QuotaScope-Token": "wrong" })).status ===
+    (await post("refresh", {}, { "X-CDXScope-Token": "wrong" })).status ===
       403,
     "missing token rejected",
   );
@@ -327,7 +327,7 @@ try {
     { cwd: resolve("."), encoding: "utf8" },
   );
   verify(restore.status === 0, "restore CLI succeeds into new target");
-  const recovered = new Store(join(restored, "quotascope.sqlite"));
+  const recovered = new Store(join(restored, "cdxscope.sqlite"));
   verify(
     recovered.events().length === 1 && recovered.annotations().length === 1,
     "restored usage and annotations match",
@@ -363,7 +363,7 @@ try {
         env: {
           ...process.env,
           ...definition.EnvironmentVariables,
-          QUOTASCOPE_FIXTURE_STATE: config,
+          CDXSCOPE_FIXTURE_STATE: config,
         },
         stdio: "ignore",
       },
@@ -470,7 +470,7 @@ try {
   );
   verify(
     d.csrf !== oldToken &&
-      (await post("refresh", {}, { "X-QuotaScope-Token": oldToken })).status ===
+      (await post("refresh", {}, { "X-CDXScope-Token": oldToken })).status ===
         403,
     "restart rotates stale action token before executing writes",
   );
@@ -713,7 +713,7 @@ try {
   );
   // A restart must preserve the last requested outcome even while automatic jobs run.
   await stop();
-  const interrupted = new Store(join(dataDir, "quotascope.sqlite"));
+  const interrupted = new Store(join(dataDir, "cdxscope.sqlite"));
   for (const kind of ["scan", "backup"])
     interrupted.set(kind + "Operation", {
       id: "interrupted-" + kind,
@@ -751,7 +751,7 @@ try {
     "accepted failing scan reports its own durable failure",
   );
   await stop();
-  const enabledStore = new Store(join(dataDir, "quotascope.sqlite"));
+  const enabledStore = new Store(join(dataDir, "cdxscope.sqlite"));
   enabledStore.set("collectionEnabled", true);
   enabledStore.close();
   start();

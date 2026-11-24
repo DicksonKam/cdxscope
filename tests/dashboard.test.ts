@@ -54,7 +54,7 @@ const event = (key: string, at = now): TokenEvent => ({
 });
 function fixture() {
   return new Store(
-    join(mkdtempSync(`${tmpdir()}/quotascope-dashboard-`), "usage.sqlite"),
+    join(mkdtempSync(`${tmpdir()}/cdxscope-dashboard-`), "usage.sqlite"),
   );
 }
 function current(store: Store) {

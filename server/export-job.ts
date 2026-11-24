@@ -48,7 +48,7 @@ export class ExportJob {
       child.stdout!.once("data", () => {
         res.writeHead(200, {
           "Content-Type": format === "csv" ? "text/csv" : "application/json",
-          "Content-Disposition": `attachment; filename="quotascope-metadata.${format}"`,
+          "Content-Disposition": `attachment; filename="cdxscope-metadata.${format}"`,
           "Cache-Control": "no-store",
         });
       });

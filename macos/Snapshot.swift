@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 // Offscreen renderer for the menu bar panel, for visual review without screen recording access.
-// Build: xcrun swiftc -D QUOTASCOPE_SNAPSHOT macos/QuotaModel.swift macos/HistoryModel.swift macos/QuotaScope.swift macos/HistoryView.swift macos/Snapshot.swift -o snapshot -framework AppKit -framework SwiftUI
+// Build: xcrun swiftc -D CDXSCOPE_SNAPSHOT macos/CDXScopeModel.swift macos/HistoryModel.swift macos/CDXScope.swift macos/HistoryView.swift macos/Snapshot.swift -o snapshot -framework AppKit -framework SwiftUI
 // Run:   snapshot <output folder> [port]
 // Writes <scenario>-<appearance>.png at 2x for the live service state and for a delayed-history state.
 

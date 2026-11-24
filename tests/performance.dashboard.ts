@@ -9,8 +9,8 @@ import { Collector } from "../server/collector.ts";
 import type { Observation, TokenEvent } from "../shared/types.ts";
 
 const root =
-  process.env.QUOTASCOPE_PERFORMANCE_FIXTURES ??
-  mkdtempSync(`${tmpdir()}/quotascope-performance-`);
+  process.env.CDXSCOPE_PERFORMANCE_FIXTURES ??
+  mkdtempSync(`${tmpdir()}/cdxscope-performance-`);
 const results: unknown[] = [];
 for (const days of [90, 365]) {
   const reused = existsSync(join(root, `history-${days}.sqlite`));

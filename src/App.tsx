@@ -254,7 +254,7 @@ export function App() {
             <Gauge size={23} />
           </span>
           <span>
-            QuotaScope
+            CDXScope
             <span className="brand-caption">PERSONAL OBSERVATORY</span>
           </span>
         </a>
@@ -314,7 +314,7 @@ export function App() {
             {dark ? "Light appearance" : "Dark appearance"}
           </button>
           <div className="version">
-            QUOTASCOPE <span>v0.1.0</span>
+            CDXSCOPE <span>v0.1.0</span>
           </div>
         </div>
       </aside>
@@ -444,7 +444,7 @@ export function App() {
               <section className="card">
                 <h2>Start the local service</h2>
                 <p>
-                  Run <code>npm start</code> from QuotaScope, then reconnect. If
+                  Run <code>npm start</code> from CDXScope, then reconnect. If
                   setup needs attention, run <code>npm run doctor</code>.
                 </p>
                 <button className="button" onClick={() => void load()}>
@@ -976,7 +976,7 @@ export function App() {
                       </div>
                       <p>
                         {latest?.resetCredits ?? "Unavailable"} banked reset
-                        credits reported. QuotaScope never redeems them. Source
+                        credits reported. CDXScope never redeems them. Source
                         logs are read-only. Prompts, code, titles, and
                         credentials are excluded. Cross-device and cloud
                         activity may be missing.

@@ -41,7 +41,7 @@ test("health distinguishes fresh, delayed, paused, failed and unreachable monito
 });
 test("coverage retains gaps beyond recent attempts, recovers after restart and invalidates after a read", () => {
   const path = join(
-    mkdtempSync(`${tmpdir()}/quotascope-monitoring-`),
+    mkdtempSync(`${tmpdir()}/cdxscope-monitoring-`),
     "usage.sqlite",
   );
   let store = new Store(path);
