@@ -195,3 +195,84 @@ test("delayed execution after sleep runs once and resumes normal cadence without
   await c.stop();
   t.mock.timers.reset();
 });
+
+test("auth errors and repeated non-offline failures trip persistent pause circuit breaker until manual refresh", async () => {
+  let result: CollectResult = "pause";
+  let calls = 0;
+  let saved: CollectorState | undefined;
+  const c = new Collector(
+    async () => {
+      calls++;
+      return result;
+    },
+    true,
+    (s) => {
+      saved = s;
+    },
+    60000,
+    undefined,
+    300000,
+    3,
+  );
+  await c.cycle();
+  assert.equal(calls, 1);
+  assert.equal(c.state.authPaused, true);
+  assert.equal(c.state.nextRunAt, null);
+  // Background and wake cycles are ignored while circuit-broken.
+  await c.cycle();
+  assert.equal(calls, 1);
+  await c.stop();
+
+  // Pause state persists across restarts.
+  const restored = new Collector(
+    async () => {
+      calls++;
+      return result;
+    },
+    true,
+    () => {},
+    60000,
+    saved,
+    300000,
+    3,
+  );
+  assert.equal(restored.state.authPaused, true);
+  await restored.cycle();
+  assert.equal(calls, 1);
+  // Explicit manual refresh clears the circuit breaker and resumes cadence on success.
+  result = true;
+  await restored.cycle(true);
+  assert.equal(calls, 2);
+  assert.equal(restored.state.authPaused, false);
+  assert.ok(restored.state.nextRunAt);
+  await restored.stop();
+});
+
+test("offline cycles stay cleanly offline without tripping pause, while 3 consecutive non-offline errors trip pause", async () => {
+  let result: CollectResult = "offline";
+  const c = new Collector(
+    async () => result,
+    true,
+    () => {},
+    60000,
+    undefined,
+    300000,
+    3,
+  );
+  for (let i = 0; i < 6; i++) {
+    await c.cycle();
+    assert.equal(c.state.offline, true);
+    assert.equal(c.state.authPaused, false);
+    assert.ok(c.state.nextRunAt);
+  }
+  // 3 consecutive non-offline failures trip the circuit breaker.
+  result = "transient";
+  await c.cycle();
+  assert.equal(c.state.authPaused, false);
+  await c.cycle();
+  assert.equal(c.state.authPaused, false);
+  await c.cycle();
+  assert.equal(c.state.authPaused, true);
+  assert.equal(c.state.nextRunAt, null);
+  await c.stop();
+});

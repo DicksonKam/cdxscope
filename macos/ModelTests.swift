@@ -65,6 +65,10 @@ func payload(version: Int = 1, used: Double = 27, ok: Bool = true, enabled: Bool
         precondition(label(failedStatus).title == "—" && label(pausedStatus).detail == "Monitoring paused")
         let emptyStatus = Status(version: 1, csrf: "token", windows: [], collector: freshStatus.collector, attempts: freshStatus.attempts)
         precondition(label(emptyStatus).title == "—")
+        let authPausedStatus = Status(version: 1, csrf: "token", windows: freshStatus.windows, collector: MonitorState(enabled: true, running: false, authPaused: true, offline: false), attempts: freshStatus.attempts)
+        precondition(label(authPausedStatus).title == "—" && label(authPausedStatus).detail.contains("sign in"))
+        let offlineStatus = Status(version: 1, csrf: "token", windows: freshStatus.windows, collector: MonitorState(enabled: true, running: false, authPaused: false, offline: true), attempts: freshStatus.attempts)
+        precondition(label(offlineStatus).title == "—" && label(offlineStatus).detail.contains("Offline"))
         for remaining in [0.0, 0.4, 9, 15, 49, 50, 51, 100] {
             let window = Allowance(account: nil, bucket: "codex", slot: "primary", used: 100 - remaining, duration: 10080, reset: nil, at: clock.timeIntervalSince1970 * 1000)
             let reading = label(window: window)

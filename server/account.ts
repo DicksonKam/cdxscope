@@ -1,33 +1,172 @@
 import { spawn } from "node:child_process";
+import { lookup } from "node:dns/promises";
+import { accessSync, constants } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, isAbsolute, join } from "node:path";
 import { createInterface } from "node:readline";
 import { randomUUID } from "node:crypto";
 import { numeric, label } from "./privacy.ts";
 import type { AccountSnapshot, Observation } from "../shared/types.ts";
 import { sortWindows, windowKey } from "../shared/allowance.ts";
 
+export type AccountErrorKind = "error" | "offline" | "auth";
+export type NetworkPreflight = () => Promise<boolean>;
+
+const signedOutPattern =
+  /not logged in|not signed in|sign[\s-]?in required|login required|auth(?:entication)? required|unauthorized|unauthenticated|invalid.*token|expired.*token|session expired|please log ?in|please sign ?in/i;
+const offlineErrorPattern =
+  /enotfound|eai_again|no such host|i\/o timeout|network is unreachable|dns|getaddrinfo|econnrefused|ehostunreach|enetunreach|offline/i;
+
+/**
+ * Resolve an executable name to an absolute path so background spawns do not rely on a full shell PATH.
+ */
+export function resolveExecutable(
+  executable: string,
+  envPath = process.env.PATH ?? "",
+  home = homedir(),
+): string {
+  if (isAbsolute(executable) || executable.includes("/")) return executable;
+  const searchDirs = [
+    ...envPath.split(":").filter(Boolean),
+    join(home, ".local/bin"),
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+  ];
+  for (const dir of [...new Set(searchDirs)]) {
+    const candidate = join(dir, executable);
+    try {
+      accessSync(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      /* Continue searching. */
+    }
+  }
+  return executable;
+}
+
+/**
+ * Stripped non-interactive environment for spawning `codex app-server`.
+ * Blocks browser/OAuth popups (`NO_BROWSER=1`, `BROWSER=""`, `CI=true`, `NONINTERACTIVE=1`) and omits
+ * system browser launcher directories (`/usr/bin`, `/bin`) from `PATH`.
+ */
+export function headlessCodexEnv(
+  base: NodeJS.ProcessEnv = process.env,
+  nodeBinDir = dirname(process.execPath),
+): NodeJS.ProcessEnv {
+  const safePath =
+    nodeBinDir && nodeBinDir !== "/usr/bin" && nodeBinDir !== "/bin"
+      ? nodeBinDir
+      : "";
+  const env: NodeJS.ProcessEnv = {
+    PATH: safePath,
+    NO_BROWSER: "1",
+    BROWSER: "",
+    CI: "true",
+    NONINTERACTIVE: "1",
+  };
+  for (const key of [
+    "HOME",
+    "USER",
+    "LOGNAME",
+    "TMPDIR",
+    "LANG",
+    "LC_ALL",
+    "XDG_CONFIG_HOME",
+    "XDG_CACHE_HOME",
+    "XDG_STATE_HOME",
+    "CODEX_HOME",
+    "HTTPS_PROXY",
+    "HTTP_PROXY",
+    "ALL_PROXY",
+    "NO_PROXY",
+    "https_proxy",
+    "http_proxy",
+    "all_proxy",
+    "no_proxy",
+    "CDXSCOPE_FIXTURE_STATE",
+  ]) {
+    if (base[key] !== undefined) env[key] = base[key];
+  }
+  return env;
+}
+
+/**
+ * Lightweight DNS pre-flight so CDXScope skips spawning the 20 s `codex app-server` subprocess while
+ * offline or when DNS is broken.
+ */
+export async function defaultNetworkPreflight(
+  timeoutMs = 2500,
+): Promise<boolean> {
+  const resolveWithTimeout = (host: string) =>
+    new Promise<boolean>((resolve) => {
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          resolve(false);
+        }
+      }, timeoutMs);
+      timer.unref();
+      lookup(host)
+        .then(() => {
+          if (!settled) {
+            settled = true;
+            clearTimeout(timer);
+            resolve(true);
+          }
+        })
+        .catch(() => {
+          if (!settled) {
+            settled = true;
+            clearTimeout(timer);
+            resolve(false);
+          }
+        });
+    });
+  const [a, b] = await Promise.all([
+    resolveWithTimeout("chatgpt.com"),
+    resolveWithTimeout("api.openai.com"),
+  ]);
+  return a || b;
+}
+
 /**
  * A failed account read. Transient failures can clear without the user doing anything: the network is not back
- * after a wake or a move between networks, the helper was slow, or its connection dropped. Codex reports an
- * unreachable backend as unavailable usage, so that reply is transient too. A missing CLI or a malformed reply
- * is not, and keeps the collector's longer backoff.
+ * after a wake or a move between networks, the helper was slow, or its connection dropped. Explicit auth/signed-out
+ * replies set `kind = "auth"` so the collector pauses instead of retrying forever. Offline DNS pre-flight skips
+ * spawning `codex` and sets `kind = "offline"`.
  */
 export class AccountReadError extends Error {
   constructor(
     message: string,
     readonly transient: boolean,
+    readonly kind: AccountErrorKind = "error",
   ) {
     super(message);
   }
 }
-export function readAccount(
+
+export async function readAccount(
   timeoutMs = 20000,
   executable = process.env.CDXSCOPE_CODEX ?? "codex",
+  options?: { preflight?: NetworkPreflight },
 ): Promise<unknown> {
+  if (options?.preflight) {
+    const online = await options.preflight().catch(() => false);
+    if (!online) {
+      throw new AccountReadError(
+        "Offline or DNS unavailable — skipped Codex check until network recovers.",
+        true,
+        "offline",
+      );
+    }
+  }
+  const resolvedBin = resolveExecutable(executable);
   return new Promise((resolve, reject) => {
     const child = spawn(
-      executable,
+      resolvedBin,
       ["app-server", "--listen", "stdio://", "-c", "analytics.enabled=false"],
-      { stdio: ["pipe", "pipe", "ignore"] },
+      { stdio: ["pipe", "pipe", "ignore"], env: headlessCodexEnv() },
     );
     const lines = createInterface({ input: child.stdout });
     let finished = false;
@@ -100,13 +239,35 @@ export function readAccount(
         send({ method: "initialized" });
         send({ id: 2, method: "account/rateLimits/read" });
       } else if (msg.id === 2) {
-        if (msg.error)
+        if (msg.error) {
+          const rawMessage =
+            typeof msg.error?.message === "string" ? msg.error.message : "";
+          const rawCode = msg.error?.code;
+          if (rawCode === 401 || signedOutPattern.test(rawMessage)) {
+            return end(
+              new AccountReadError(
+                "Codex sign-in required; background checks paused to avoid repeated retries. Sign in through Codex, then click Refresh.",
+                false,
+                "auth",
+              ),
+            );
+          }
+          if (offlineErrorPattern.test(rawMessage)) {
+            return end(
+              new AccountReadError(
+                "Offline or DNS unavailable — waiting for network to recover.",
+                true,
+                "offline",
+              ),
+            );
+          }
           return end(
             new AccountReadError(
               "Account usage is unavailable. If this persists, sign in through Codex; CDXScope does not change authentication.",
               true,
             ),
           );
+        }
         end(undefined, msg.result);
       } else if (msg.method && msg.id != null) {
         // Reject every server-initiated action. This adapter only reads account limits.
@@ -126,7 +287,7 @@ export function readAccount(
         clientInfo: {
           name: "cdxscope",
           title: "CDXScope",
-          version: "0.1.0",
+          version: "0.2.2",
         },
         capabilities: { experimentalApi: true },
       },

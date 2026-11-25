@@ -16,9 +16,17 @@ export function monitoringHealth(
   failed: boolean,
   now: number,
   unreachable = false,
+  options?: { authPaused?: boolean; offline?: boolean },
 ) {
   if (unreachable) return { kind: "warning", label: "Service unreachable" };
   if (!enabled) return { kind: "paused", label: "Monitoring paused" };
+  if (options?.authPaused)
+    return {
+      kind: "warning",
+      label: "Monitoring paused · sign-in or refresh required",
+    };
+  if (options?.offline)
+    return { kind: "warning", label: "Offline · waiting for network" };
   if (failed)
     return { kind: "warning", label: "Account read failed · retry scheduled" };
   if (coverage.lastSuccessAt === null)

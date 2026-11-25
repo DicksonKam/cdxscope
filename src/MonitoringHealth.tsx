@@ -43,6 +43,7 @@ export function MonitoringHealth({
     attempt?.ok === false,
     now,
     unreachable,
+    { authPaused: collector.authPaused, offline: collector.offline },
   );
   const health =
     accountHealth.kind === "healthy" && importer?.lastError
@@ -72,9 +73,13 @@ export function MonitoringHealth({
         <span className="tag">
           {unreachable
             ? "Service connection lost"
-            : collector.enabled
-              ? "Checks every minute while awake"
-              : "Paused · manual refresh available"}
+            : collector.authPaused
+              ? "Paused until refresh"
+              : collector.offline
+                ? "Offline · waiting for DNS"
+                : collector.enabled
+                  ? "Checks every minute while awake"
+                  : "Paused · manual refresh available"}
         </span>
       </div>
       <div className="monitoring-facts">
@@ -105,11 +110,13 @@ export function MonitoringHealth({
               ? "Unavailable until reconnected"
               : collector.running
                 ? "Reading account allowance…"
-                : collector.enabled && collector.nextRunAt
-                  ? `In ${span(Math.max(0, collector.nextRunAt - now))}`
-                  : collector.enabled
-                    ? "Scheduling…"
-                    : "Paused by you"}
+                : collector.authPaused
+                  ? "Paused until you click Try now"
+                  : collector.enabled && collector.nextRunAt
+                    ? `In ${span(Math.max(0, collector.nextRunAt - now))}`
+                    : collector.enabled
+                      ? "Scheduling…"
+                      : "Paused by you"}
           </strong>
         </div>
       </div>
@@ -128,11 +135,16 @@ export function MonitoringHealth({
           <p>
             {unreachable
               ? "The dashboard cannot reach the local service. Saved readings are preserved."
-              : attempt?.ok === false
-                ? attempt.message.includes("CLI is unavailable")
-                  ? "Set CDXSCOPE_CODEX to the installed Codex executable, reinstall the service, then try again. Run npm run doctor for setup checks."
-                  : "Checks retry automatically, up to five minutes apart. Open Codex and check sign-in, then try again."
-                : "The latest reading is overdue. This can happen after sleep; the service will check again automatically."}
+              : collector.authPaused
+                ? collector.lastError ??
+                  "Background checks paused to avoid repeated retries or sign-in prompts. Sign in through Codex, then click Try now."
+                : collector.offline
+                  ? "Offline or DNS unavailable — skipped Codex check until network recovers."
+                  : attempt?.ok === false
+                    ? attempt.message.includes("CLI is unavailable")
+                      ? "Set CDXSCOPE_CODEX to the installed Codex executable, reinstall the service, then try again. Run npm run doctor for setup checks."
+                      : "Checks retry automatically, up to five minutes apart. Open Codex and check sign-in, then try again."
+                    : "The latest reading is overdue. This can happen after sleep; the service will check again automatically."}
           </p>
           <button
             className="button"

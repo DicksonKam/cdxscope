@@ -21,7 +21,12 @@ struct Allowance: Decodable, Identifiable {
     }
 }
 struct ReadAttempt: Decodable { let at: Double; let ok: Bool }
-struct MonitorState: Decodable { let enabled: Bool; let running: Bool }
+struct MonitorState: Decodable {
+    let enabled: Bool
+    let running: Bool
+    let authPaused: Bool?
+    let offline: Bool?
+}
 struct Status: Decodable {
     let version: Int
     let csrf: String
@@ -74,6 +79,8 @@ struct MenuBarReading: Equatable {
         if unavailable { reason = "Monitor unavailable" }
         else if status == nil { reason = "Connecting to monitor" }
         else if status?.collector.enabled == false { reason = "Monitoring paused" }
+        else if status?.collector.authPaused == true { reason = "Paused · sign in to Codex and refresh" }
+        else if status?.collector.offline == true { reason = "Offline · waiting for network" }
         else if window == nil { reason = "No allowance available" }
         else if status?.isFresh(at: now) != true { reason = "Waiting for a fresh reading" }
         else if let window {
@@ -376,6 +383,8 @@ final class PanelModel: ObservableObject {
         if unavailable { return "Monitor unavailable" }
         guard let status else { return "Connecting to monitor…" }
         if !status.collector.enabled { return "Monitoring paused" }
+        if status.collector.authPaused == true { return "Paused · check Codex sign-in & refresh" }
+        if status.collector.offline == true { return "Offline · waiting for network" }
         return status.isFresh(at: now) ? "Monitoring healthy" : "Waiting for a fresh reading"
     }
 }

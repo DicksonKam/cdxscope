@@ -38,6 +38,16 @@ test("health distinguishes fresh, delayed, paused, failed and unreachable monito
       .label,
     /first/,
   );
+  assert.match(
+    monitoringHealth(coverage, true, true, 70000, false, { authPaused: true })
+      .label,
+    /paused.*sign-in/i,
+  );
+  assert.match(
+    monitoringHealth(coverage, true, true, 70000, false, { offline: true })
+      .label,
+    /offline/i,
+  );
 });
 test("coverage retains gaps beyond recent attempts, recovers after restart and invalidates after a read", () => {
   const path = join(

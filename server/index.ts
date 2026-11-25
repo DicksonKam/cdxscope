@@ -8,7 +8,12 @@ import { mkdirSync, readFileSync, existsSync, chmodSync } from "node:fs";
 import { resolve, join, extname } from "node:path";
 import { Store } from "./store.ts";
 import { identityFactory, numeric, label } from "./privacy.ts";
-import { readAccount, accountSnapshot, AccountReadError } from "./account.ts";
+import {
+  readAccount,
+  accountSnapshot,
+  AccountReadError,
+  defaultNetworkPreflight,
+} from "./account.ts";
 import { DashboardReader, type DashboardQuery } from "./dashboard-reader.ts";
 import { ImportJob } from "./import-job.ts";
 import { ExportJob } from "./export-job.ts";
@@ -33,19 +38,35 @@ chmodSync(store.path, 0o600);
 const csrf = randomBytes(32).toString("hex");
 let refreshing: Promise<CollectResult> | null = null;
 let status = { scanning: false, refreshing: false };
+const skipPreflight = process.env.CDXSCOPE_SKIP_PREFLIGHT === "1";
+let lastOfflineAttempt = false;
 async function refresh(): Promise<CollectResult> {
   if (refreshing) return refreshing;
   refreshing = (async () => {
     status.refreshing = true;
     try {
-      const raw = await readAccount(20000, config.codex);
+      const raw = await readAccount(20000, config.codex, {
+        preflight: skipPreflight ? undefined : defaultNetworkPreflight,
+      });
       const previous = store.get<boolean>("accountContinuityBroken")
         ? undefined
         : store.get<AccountSnapshot>("accountSnapshot");
       store.saveAccountSnapshot(accountSnapshot(raw, hash, previous));
+      lastOfflineAttempt = false;
       return true;
     } catch (e) {
-      store.accountReadFailed((e as Error).message);
+      const err = e as Error;
+      if (e instanceof AccountReadError && e.kind === "offline") {
+        // Record the transition into offline once without flooding SQLite every minute while offline.
+        if (!lastOfflineAttempt) {
+          store.accountReadFailed(err.message);
+          lastOfflineAttempt = true;
+        }
+        return "offline";
+      }
+      lastOfflineAttempt = false;
+      store.accountReadFailed(err.message);
+      if (e instanceof AccountReadError && e.kind === "auth") return "pause";
       // Network-shaped failures retry next minute; anything else keeps the longer backoff.
       return e instanceof AccountReadError && e.transient ? "transient" : false;
     } finally {
@@ -79,6 +100,7 @@ async function importLogs() {
   }
 }
 const enabled = store.get<boolean>("collectionEnabled") ?? true;
+const maxConsecutiveAccountFailures = 3;
 const collector = new Collector(
   refresh,
   enabled,
@@ -88,6 +110,8 @@ const collector = new Collector(
   },
   60000,
   store.get("collectorState"),
+  300000,
+  maxConsecutiveAccountFailures,
 );
 const importer = new Collector(
   importLogs,

@@ -314,7 +314,7 @@ export function App() {
             {dark ? "Light appearance" : "Dark appearance"}
           </button>
           <div className="version">
-            CDXSCOPE <span>v0.2.1</span>
+            CDXSCOPE <span>v0.2.2</span>
           </div>
         </div>
       </aside>

@@ -1,16 +1,23 @@
 import type { CollectorState } from "../shared/api.ts";
 export type { CollectorState } from "../shared/api.ts";
 /**
- * What one cycle achieved. "transient" is a failure a later attempt can fix without the user doing
- * anything, such as no network yet after a wake: it is counted as a failure, but the next attempt keeps
- * the normal interval instead of backing off.
+ * What one cycle achieved:
+ * - `true`: succeeded; resets failure counters, offline state, and pause circuit breaker.
+ * - `"transient"`: recoverable failure (e.g. wake/network blip); keeps normal interval, counts toward
+ *   `maxConsecutiveFailures` if configured so repeated non-offline errors still trip the circuit breaker.
+ * - `"offline"`: pre-flight DNS or network offline; backs off up to `maxDelayMs` without spawning heavy
+ *   subprocesses and never trips the auth pause circuit breaker.
+ * - `"pause"`: explicit auth/signed-out failure; trips the persistent pause circuit breaker immediately
+ *   until a manual `cycle(true)` or `setEnabled(true)` clears it.
+ * - `false`: persistent/non-transient failure; backs off and counts toward `maxConsecutiveFailures`.
  */
-export type CollectResult = boolean | "transient";
+export type CollectResult = boolean | "transient" | "offline" | "pause";
 export class Collector {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private flight: Promise<void> | null = null;
   private stopped = false;
   private transient = false;
+  private nonOfflineFailures = 0;
   state: CollectorState;
   constructor(
     private collect: () => Promise<CollectResult>,
@@ -19,6 +26,7 @@ export class Collector {
     private intervalMs = 60000,
     previous?: Partial<CollectorState>,
     private maxDelayMs = 300000,
+    private maxConsecutiveFailures = Infinity,
   ) {
     this.state = {
       enabled,
@@ -27,10 +35,15 @@ export class Collector {
       lastStartedAt: null,
       lastCompletedAt: null,
       nextRunAt: null,
-      lastError: null,
+      lastError: previous?.authPaused
+        ? (previous.lastError ??
+          "Paused after authentication or repeated errors. Click Refresh to resume.")
+        : null,
       failureSince: previous?.failureSince ?? null,
       recoveredAt: previous?.recoveredAt ?? null,
       failures: previous?.failures ?? 0,
+      authPaused: previous?.authPaused ?? false,
+      offline: previous?.offline ?? false,
     };
   }
   private persist() {
@@ -43,7 +56,7 @@ export class Collector {
   }
   private schedule() {
     this.clear();
-    if (this.stopped || !this.state.enabled) return;
+    if (this.stopped || !this.state.enabled || this.state.authPaused) return;
     const delay = Math.min(
       this.maxDelayMs,
       this.intervalMs *
@@ -57,8 +70,13 @@ export class Collector {
   }
   cycle(manual = false): Promise<void> {
     if (this.flight) return this.flight;
-    if (this.stopped || (!this.state.enabled && !manual))
+    if (this.stopped) return Promise.resolve();
+    if (!manual && (!this.state.enabled || this.state.authPaused))
       return Promise.resolve();
+    if (manual && this.state.authPaused) {
+      this.state.authPaused = false;
+      this.nonOfflineFailures = 0;
+    }
     this.clear();
     this.state.running = true;
     this.state.lastStartedAt = Date.now();
@@ -71,6 +89,8 @@ export class Collector {
         /* Keep background failures bounded and metadata-only. */
       }
       const ok = result === true;
+      const offline = result === "offline";
+      const explicitPause = result === "pause";
       this.transient = result === "transient";
       if (ok && this.state.failureSince !== null)
         this.state.recoveredAt = Date.now();
@@ -78,9 +98,28 @@ export class Collector {
         ? null
         : (this.state.failureSince ?? Date.now());
       this.state.failures = ok ? 0 : this.state.failures + 1;
-      this.state.lastError = ok
-        ? null
-        : "Collection did not complete. Retrying automatically.";
+      this.state.offline = offline;
+      if (ok) {
+        this.nonOfflineFailures = 0;
+        this.state.authPaused = false;
+        this.state.lastError = null;
+      } else if (offline) {
+        this.state.authPaused = false;
+        this.state.lastError =
+          "Offline or DNS unavailable — waiting for network to recover.";
+      } else {
+        this.nonOfflineFailures++;
+        if (explicitPause || this.nonOfflineFailures >= this.maxConsecutiveFailures) {
+          this.state.authPaused = true;
+          this.nonOfflineFailures = 0;
+          this.state.lastError = explicitPause
+            ? "Codex sign-in required; background checks paused until you click Refresh."
+            : `Paused after ${this.maxConsecutiveFailures} consecutive errors. Click Refresh to resume.`;
+        } else {
+          this.state.lastError =
+            "Collection did not complete. Retrying automatically.";
+        }
+      }
       this.state.running = false;
       this.state.lastCompletedAt = Date.now();
       this.persist();
@@ -92,6 +131,10 @@ export class Collector {
   }
   setEnabled(enabled: boolean) {
     this.state.enabled = enabled;
+    if (enabled) {
+      this.state.authPaused = false;
+      this.nonOfflineFailures = 0;
+    }
     this.clear();
     this.persist();
     if (enabled && !this.stopped) void this.cycle();

@@ -82,6 +82,7 @@ function start(logRoot = logs) {
         CDXSCOPE_LOG_ROOT: logRoot,
         CDXSCOPE_CODEX: cli,
         CDXSCOPE_FIXTURE_STATE: config,
+        CDXSCOPE_SKIP_PREFLIGHT: "1",
       },
       stdio: "ignore",
     },
@@ -142,6 +143,7 @@ try {
         CDXSCOPE_CONFIG: join(dir, "unused-settings.json"),
         CDXSCOPE_CODEX: cli,
         CDXSCOPE_FIXTURE_STATE: config,
+        CDXSCOPE_SKIP_PREFLIGHT: "1",
       },
     });
   const diagnosis = runDoctor(port),
@@ -364,6 +366,7 @@ try {
           ...process.env,
           ...definition.EnvironmentVariables,
           CDXSCOPE_FIXTURE_STATE: config,
+          CDXSCOPE_SKIP_PREFLIGHT: "1",
         },
         stdio: "ignore",
       },

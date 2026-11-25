@@ -18,6 +18,8 @@ export interface CollectorState {
   lastError: string | null;
   failureSince: number | null;
   recoveredAt: number | null;
+  authPaused?: boolean;
+  offline?: boolean;
 }
 export interface OperationState {
   id: string;
