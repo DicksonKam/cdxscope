@@ -59,6 +59,7 @@ struct MenuBarReading: Equatable {
     let remaining: Double?
     let secondaryTitle: String?
     let tag: String?
+    let stale: Bool
     let alert: MenuBarAlertKind
     let detail: String
     var accessibilityLabel: String { "CDXScope — \(detail)" }
@@ -75,51 +76,65 @@ struct MenuBarReading: Equatable {
     }
 
     init(status: Status?, window: Allowance?, secondary: Allowance? = nil, unavailable: Bool, now: Date) {
-        var reason: String?
-        if unavailable { reason = "Monitor unavailable" }
-        else if status == nil { reason = "Connecting to monitor" }
-        else if status?.collector.enabled == false { reason = "Monitoring paused" }
-        else if status?.collector.authPaused == true { reason = "Paused · sign in to Codex and refresh" }
-        else if status?.collector.offline == true { reason = "Offline · waiting for network" }
-        else if window == nil { reason = "No allowance available" }
-        else if status?.isFresh(at: now) != true { reason = "Waiting for a fresh reading" }
+        var hardReason: String?
+        if unavailable { hardReason = "Monitor unavailable" }
+        else if status == nil { hardReason = "Connecting to monitor" }
+        else if status?.collector.enabled == false { hardReason = "Monitoring paused" }
+        else if status?.collector.authPaused == true { hardReason = "Paused · sign in to Codex and refresh" }
+        else if window == nil { hardReason = "No allowance available" }
         else if let window {
             let age = now.timeIntervalSince1970 - window.at / 1000
-            if !window.used.isFinite || !age.isFinite || age < -60 || age >= 180 {
-                reason = "Waiting for a fresh reading"
+            if !window.used.isFinite || !age.isFinite || age < -60 {
+                hardReason = "Waiting for a fresh reading"
             } else if let reset = window.reset, !reset.isFinite || reset <= now.timeIntervalSince1970 {
-                reason = "Reset time reached · awaiting a reading"
+                hardReason = "Reset time reached · awaiting a reading"
             }
         }
-        if let reason {
+        if let hardReason {
             title = "—"
             remaining = nil
             secondaryTitle = nil
             tag = nil
+            stale = false
             alert = .unavailable
-            detail = reason
+            detail = hardReason
         } else if let window {
-            // Match the panel's rounding; preserve a small nonzero allowance without displaying 0%.
+            // Keep the last valid reading visible (subtly dimmed) during brief offline/wake blips
+            // while the window has not yet reset, matching AGYScope and CCScope.
             let value = window.remaining
             remaining = value
             title = Self.formatPercent(value)
+            let age = now.timeIntervalSince1970 - window.at / 1000
+            let isOffline = status?.collector.offline == true
+            let isFresh = status?.isFresh(at: now) == true && age >= -60 && age < 180
+            stale = isOffline || !isFresh
+
             let validSecondary: Allowance? = {
                 guard let secondary, secondary.id != window.id, secondary.used.isFinite else { return nil }
-                let age = now.timeIntervalSince1970 - secondary.at / 1000
-                guard age.isFinite, age >= -60, age < 180 else { return nil }
+                let secAge = now.timeIntervalSince1970 - secondary.at / 1000
+                guard secAge.isFinite, secAge >= -60 else { return nil }
                 if let reset = secondary.reset, !reset.isFinite || reset <= now.timeIntervalSince1970 { return nil }
                 return secondary
             }()
+            var parts: [String] = []
             if let validSecondary {
                 let secPct = Self.formatPercent(validSecondary.remaining)
                 secondaryTitle = secPct
                 tag = (validSecondary.duration ?? 0) >= 1440 ? "WK" : (Self.durationTag(for: validSecondary) ?? "WK")
-                detail = "\(window.title): \(title) remaining · \(validSecondary.title): \(secPct) remaining"
+                parts.append("\(window.title): \(title) remaining")
+                parts.append("\(validSecondary.title): \(secPct) remaining")
             } else {
                 secondaryTitle = nil
                 tag = Self.durationTag(for: window)
-                detail = "\(window.title): \(title) remaining"
+                parts.append("\(window.title): \(title) remaining")
             }
+            if isOffline {
+                parts.append("Offline · waiting for network")
+            } else if stale {
+                parts.append("Waiting for a fresh reading")
+            }
+            detail = parts.joined(separator: " · ")
+
             if value <= 0 { alert = .depleted }
             else if value < 15 { alert = .low }
             else { alert = .healthy }
@@ -128,6 +143,7 @@ struct MenuBarReading: Equatable {
             remaining = nil
             secondaryTitle = nil
             tag = nil
+            stale = false
             alert = .unavailable
             detail = "No allowance available"
         }
@@ -199,12 +215,13 @@ enum MenuBarGauge {
             secondaryColor = primaryColor
         }
 
+        let dimAlpha: CGFloat = reading.stale ? 0.55 : 1.0
         let image = NSImage(size: size, flipped: false) { _ in
             guard let cg = NSGraphicsContext.current?.cgContext else { return false }
 
             // 1. Living Codex Orb silhouette (25% ghost top + solid liquid fill bottom-to-top)
             let logoRect = CGRect(x: 1.0, y: 2.25, width: 17.5, height: 17.5)
-            CodexOrbShape.draw(in: cg, rect: logoRect, color: primaryColor, alpha: 0.25)
+            CodexOrbShape.draw(in: cg, rect: logoRect, color: primaryColor, alpha: 0.25 * dimAlpha)
 
             if let rem = reading.remaining, rem.isFinite, rem > 0 {
                 let frac = CGFloat(min(100, max(0, rem)) / 100.0)
@@ -214,7 +231,7 @@ enum MenuBarGauge {
                 let fillH = spanH * frac
                 cg.saveGState()
                 cg.clip(to: CGRect(x: logoRect.minX - 1, y: baseY - 1, width: logoRect.width + 2, height: fillH + 1))
-                CodexOrbShape.draw(in: cg, rect: logoRect, color: primaryColor, alpha: 1.0)
+                CodexOrbShape.draw(in: cg, rect: logoRect, color: primaryColor, alpha: dimAlpha)
                 cg.restoreGState()
             }
 
@@ -223,7 +240,7 @@ enum MenuBarGauge {
             let fontSize: CGFloat = digits.count >= 3 ? 10.2 : 12.2
             let text = NSMutableAttributedString(string: reading.title, attributes: [
                 .font: NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .bold),
-                .foregroundColor: primaryColor,
+                .foregroundColor: primaryColor.withAlphaComponent(dimAlpha),
             ])
             if reading.title.hasSuffix("%") {
                 text.addAttribute(.font, value: NSFont.systemFont(ofSize: 7.4, weight: .semibold), range: NSRange(location: (reading.title as NSString).length - 1, length: 1))
@@ -235,12 +252,12 @@ enum MenuBarGauge {
             if let secondaryTitle = reading.secondaryTitle {
                 let tagAttr = NSAttributedString(string: reading.tag ?? "WK", attributes: [
                     .font: NSFont.systemFont(ofSize: 5.8, weight: .semibold),
-                    .foregroundColor: secondaryColor.withAlphaComponent(0.48),
+                    .foregroundColor: secondaryColor.withAlphaComponent(0.48 * dimAlpha),
                 ])
                 let secDigits = secondaryTitle.replacingOccurrences(of: "%", with: "")
                 let secAttr = NSMutableAttributedString(string: secondaryTitle, attributes: [
                     .font: NSFont.monospacedDigitSystemFont(ofSize: secDigits.count >= 3 ? 7.2 : 8.2, weight: .medium),
-                    .foregroundColor: secondaryColor.withAlphaComponent(0.72),
+                    .foregroundColor: secondaryColor.withAlphaComponent(0.72 * dimAlpha),
                 ])
                 if secondaryTitle.hasSuffix("%") {
                     secAttr.addAttribute(.font, value: NSFont.systemFont(ofSize: 5.5, weight: .medium), range: NSRange(location: (secondaryTitle as NSString).length - 1, length: 1))
@@ -251,7 +268,7 @@ enum MenuBarGauge {
             } else if let tag = reading.tag {
                 let tagAttr = NSAttributedString(string: tag, attributes: [
                     .font: NSFont.systemFont(ofSize: 6.5, weight: .bold),
-                    .foregroundColor: secondaryColor.withAlphaComponent(0.48),
+                    .foregroundColor: secondaryColor.withAlphaComponent(0.48 * dimAlpha),
                 ])
                 let tagX = max(textOriginX + text.size().width + 3.0, 48.0)
                 let tagY = (size.height - tagAttr.size().height) / 2.0 - 0.3

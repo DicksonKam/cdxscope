@@ -49,8 +49,8 @@ func payload(version: Int = 1, used: Double = 27, ok: Bool = true, enabled: Bool
         precondition(label().accessibilityLabel == "CDXScope — Codex · 7 days: 73% remaining")
         precondition(label(nil).title == "—" && label(nil).detail == "Connecting to monitor")
         precondition(label(unavailable: true).title == "—")
-        precondition(label(now: clock.addingTimeInterval(179)).title == "73%")
-        precondition(label(now: clock.addingTimeInterval(180)).title == "—")
+        precondition(label(now: clock.addingTimeInterval(179)).title == "73%" && !label(now: clock.addingTimeInterval(179)).stale)
+        precondition(label(now: clock.addingTimeInterval(180)).title == "73%" && label(now: clock.addingTimeInterval(180)).stale)
         precondition(label(now: clock.addingTimeInterval(-61)).title == "—")
         for (used, expected) in [(0.0,"100%"),(100,"0%"),(99.6,"<1%"),(32,"68%"),(120,"0%"),(-1,"100%"),(Double.nan,"—")] {
             let window = Allowance(account: nil, bucket: "codex", slot: "primary", used: used, duration: 10080, reset: nil, at: clock.timeIntervalSince1970 * 1000)
@@ -59,16 +59,16 @@ func payload(version: Int = 1, used: Double = 27, ok: Bool = true, enabled: Bool
         let expired = Allowance(account: nil, bucket: "codex", slot: "primary", used: 27, duration: 10080, reset: clock.timeIntervalSince1970, at: clock.timeIntervalSince1970 * 1000)
         precondition(label(window: expired).title == "—" && label(window: expired).detail.contains("Reset time reached"))
         let staleWindow = Allowance(account: nil, bucket: "codex", slot: "primary", used: 27, duration: 10080, reset: nil, at: (clock.timeIntervalSince1970 - 180) * 1000)
-        precondition(label(window: staleWindow).title == "—") // A fresh attempt cannot freshen an old window.
+        precondition(label(window: staleWindow).title == "73%" && label(window: staleWindow).stale) // Kept visible (dimmed) until reset.
         let failedStatus = try decoder.decode(Status.self, from: payload(ok: false, at: clock.timeIntervalSince1970 * 1000))
         let pausedStatus = try decoder.decode(Status.self, from: payload(enabled: false, at: clock.timeIntervalSince1970 * 1000))
-        precondition(label(failedStatus).title == "—" && label(pausedStatus).detail == "Monitoring paused")
+        precondition(label(failedStatus).title == "73%" && label(failedStatus).stale && label(pausedStatus).title == "—" && label(pausedStatus).detail == "Monitoring paused")
         let emptyStatus = Status(version: 1, csrf: "token", windows: [], collector: freshStatus.collector, attempts: freshStatus.attempts)
         precondition(label(emptyStatus).title == "—")
         let authPausedStatus = Status(version: 1, csrf: "token", windows: freshStatus.windows, collector: MonitorState(enabled: true, running: false, authPaused: true, offline: false), attempts: freshStatus.attempts)
         precondition(label(authPausedStatus).title == "—" && label(authPausedStatus).detail.contains("sign in"))
         let offlineStatus = Status(version: 1, csrf: "token", windows: freshStatus.windows, collector: MonitorState(enabled: true, running: false, authPaused: false, offline: true), attempts: freshStatus.attempts)
-        precondition(label(offlineStatus).title == "—" && label(offlineStatus).detail.contains("Offline"))
+        precondition(label(offlineStatus).title == "73%" && label(offlineStatus).stale && label(offlineStatus).detail.contains("Offline"))
         for remaining in [0.0, 0.4, 9, 15, 49, 50, 51, 100] {
             let window = Allowance(account: nil, bucket: "codex", slot: "primary", used: 100 - remaining, duration: 10080, reset: nil, at: clock.timeIntervalSince1970 * 1000)
             let reading = label(window: window)
@@ -88,7 +88,7 @@ func payload(version: Int = 1, used: Double = 27, ok: Bool = true, enabled: Bool
         precondition(dualReading.title == "78%" && dualReading.secondaryTitle == "62%" && dualReading.tag == "WK" && dualReading.alert == .healthy)
         let dualImage = MenuBarGauge.image(reading: dualReading, darkBar: false)
         precondition(dualImage.isTemplate && dualImage.size == NSSize(width: 72, height: 22))
-        for reading in [label(nil), label(unavailable: true), label(pausedStatus), label(failedStatus), label(window: expired)] {
+        for reading in [label(nil), label(unavailable: true), label(pausedStatus), label(authPausedStatus), label(window: expired)] {
             precondition(reading.remaining == nil && reading.alert == .unavailable && reading.tag == nil)
             let image = MenuBarGauge.image(reading: reading)
             precondition(image.isTemplate && image.size == NSSize(width: 42, height: 22))

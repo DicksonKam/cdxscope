@@ -259,7 +259,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     @objc private func woke() {
         updateMenuBar()
-        Task { await poll() }
+        Task {
+            await poll()
+            // Follow up shortly after Wi-Fi/proxy finishes associating on wake.
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            await poll()
+        }
     }
     @objc private func screenChanged() { if panel.isVisible { positionPanel() } }
     private func positionPanel() {

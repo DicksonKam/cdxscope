@@ -17,6 +17,7 @@ export class Collector {
   private flight: Promise<void> | null = null;
   private stopped = false;
   private transient = false;
+  private offlineChecks = 0;
   private nonOfflineFailures = 0;
   state: CollectorState;
   constructor(
@@ -27,6 +28,7 @@ export class Collector {
     previous?: Partial<CollectorState>,
     private maxDelayMs = 300000,
     private maxConsecutiveFailures = Infinity,
+    private offlineDelaysMs: readonly number[] = [5000, 15000, 30000],
   ) {
     this.state = {
       enabled,
@@ -57,11 +59,22 @@ export class Collector {
   private schedule() {
     this.clear();
     if (this.stopped || !this.state.enabled || this.state.authPaused) return;
-    const delay = Math.min(
-      this.maxDelayMs,
-      this.intervalMs *
-        2 ** (this.transient ? 0 : Math.min(4, this.state.failures)),
-    );
+    let delay: number;
+    if (this.state.offline && this.offlineDelaysMs.length > 0) {
+      // DNS pre-flight is ~3ms and spawns no subprocess, so recheck quickly (5s -> 15s -> 30s)
+      // to recover immediately after wake, Wi-Fi switches, or proxy/VPN reloads.
+      const index = Math.min(
+        Math.max(0, this.offlineChecks - 1),
+        this.offlineDelaysMs.length - 1,
+      );
+      delay = Math.min(this.maxDelayMs, this.offlineDelaysMs[index]);
+    } else {
+      delay = Math.min(
+        this.maxDelayMs,
+        this.intervalMs *
+          2 ** (this.transient ? 0 : Math.min(4, this.state.failures)),
+      );
+    }
     this.state.nextRunAt = Date.now() + delay;
     this.timer = setTimeout(() => {
       void this.cycle();
@@ -100,14 +113,17 @@ export class Collector {
       this.state.failures = ok ? 0 : this.state.failures + 1;
       this.state.offline = offline;
       if (ok) {
+        this.offlineChecks = 0;
         this.nonOfflineFailures = 0;
         this.state.authPaused = false;
         this.state.lastError = null;
       } else if (offline) {
+        this.offlineChecks++;
         this.state.authPaused = false;
         this.state.lastError =
           "Offline or DNS unavailable — waiting for network to recover.";
       } else {
+        this.offlineChecks = 0;
         this.nonOfflineFailures++;
         if (explicitPause || this.nonOfflineFailures >= this.maxConsecutiveFailures) {
           this.state.authPaused = true;

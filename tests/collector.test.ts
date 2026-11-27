@@ -248,7 +248,7 @@ test("auth errors and repeated non-offline failures trip persistent pause circui
   await restored.stop();
 });
 
-test("offline cycles stay cleanly offline without tripping pause, while 3 consecutive non-offline errors trip pause", async () => {
+test("offline cycles stay cleanly offline with fast DNS retry cadence (5s -> 15s -> 30s) without tripping pause, while 3 consecutive non-offline errors trip pause", async () => {
   let result: CollectResult = "offline";
   const c = new Collector(
     async () => result,
@@ -259,11 +259,16 @@ test("offline cycles stay cleanly offline without tripping pause, while 3 consec
     300000,
     3,
   );
-  for (let i = 0; i < 6; i++) {
+  const expectedDelays = [5000, 15000, 30000, 30000, 30000, 30000];
+  for (let i = 0; i < expectedDelays.length; i++) {
     await c.cycle();
     assert.equal(c.state.offline, true);
     assert.equal(c.state.authPaused, false);
-    assert.ok(c.state.nextRunAt);
+    const remaining = c.state.nextRunAt! - Date.now();
+    assert.ok(
+      remaining <= expectedDelays[i] + 50 && remaining > expectedDelays[i] - 500,
+      `expected ~${expectedDelays[i]}ms offline retry, got ${remaining}ms`,
+    );
   }
   // 3 consecutive non-offline failures trip the circuit breaker.
   result = "transient";
